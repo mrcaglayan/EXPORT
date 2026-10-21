@@ -1,0 +1,52 @@
+{
+  "name": "export-accounting-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Export Accounting API foundation",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "test": "node --test tests/bootstrap.test.js tests/foundation.test.js tests/money.test.js",
+    "db:check": "node scripts/db-check.js",
+    "db:migrate": "node src/migrate.js",
+    "db:migrate:local": "node scripts/migrate-local.js",
+    "db:migrate:status": "node src/migrate.js status",
+    "check:openapi": "node scripts/check-openapi.js",
+    "test:pr00": "node scripts/test-pr00.js",
+    "test:pr00b": "node scripts/test-pr00.js auth",
+    "test:pr00b:browser": "node scripts/test-pr00.js browser",
+    "test:pr00c": "node scripts/test-pr00.js accounting",
+    "test:pr00c:browser": "node scripts/test-pr00.js browser",
+    "test:journal:performance": "node scripts/test-pr00.js journal-performance",
+    "test:journal:browser": "node scripts/test-pr00.js journal-browser",
+    "setup:admin": "node scripts/setup-admin.js",
+    "setup:local-auth": "node scripts/setup-local-auth.js",
+    "test:pr01a": "node scripts/test-pr00.js products",
+    "test:pr01a:browser": "node scripts/test-pr00.js browser",
+    "test:pr01b": "node scripts/test-pr00.js classification",
+    "test:pr01b:browser": "node scripts/test-pr00.js browser"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "decimal.js": "^10.6.0",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.24.6"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "^13.1.0",
+    "nodemon": "^3.1.14"
+  }
+}
