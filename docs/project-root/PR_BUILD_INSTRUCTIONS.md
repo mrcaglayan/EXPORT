@@ -1,6 +1,6 @@
 # Coding-Agent PR Execution Instructions — Export Accounting Application
 
-Use this alongside `EXPORT_IMPLEMENTATION_ROADMAP.md` and the **new, user-authorized 21 October baseline** `PR01_PR02_database_specification.md` / `PR01_PR02_schema.sql`. Authoritative copies are tracked in `export-accounting/docs/design/`. The original referenced inputs were never supplied; the new baseline is not presented as a recovered original. Its PR-01A/PR-01B schema is implemented; future inventory contracts remain planned.
+Use this alongside `EXPORT_IMPLEMENTATION_ROADMAP.md` and the **new, user-authorized 21 October baseline** `PR01_PR02_database_specification.md` / `PR01_PR02_schema.sql`. Authoritative copies are tracked in `export-accounting/docs/design/`. The original referenced inputs were never supplied; the new baseline is not presented as a recovered original. Baseline v5 implements PR-01A/PR-01B/PR-02A/PR-02B; later inventory contracts remain planned.
 
 ## Overall coding contract
 

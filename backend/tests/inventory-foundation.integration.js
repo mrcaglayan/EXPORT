@@ -150,7 +150,7 @@ test('PR-02A warehouse, pool, period and movement metadata', { timeout: 120000 }
     assert.ok((await accounting.list(ctx(), 'audit_events', {})).items.every(r => !r.action.startsWith('inventory.')));
     assert.equal((await products.list(ctx(), 'audit-events', {})).total, 0);
   });
-  await t.test('HTTP enforces sessions, scope, CSRF, idempotency and absent posting/deletion routes', async () => {
+  await t.test('HTTP enforces sessions, scope, CSRF, idempotency, receipt validation and absent deletion/close routes', async () => {
     const server = createApp().listen(0, '127.0.0.1'); await once(server, 'listening');
     const cookies = new Map();
     const request = async (path, method = 'GET', body, headers = {}) => {

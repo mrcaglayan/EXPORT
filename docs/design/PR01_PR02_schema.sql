@@ -376,7 +376,7 @@ CREATE TRIGGER inventory_balances_no_delete BEFORE DELETE ON inventory_balances 
 CREATE TRIGGER inventory_pool_balances_no_delete BEFORE DELETE ON inventory_pool_balances FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Inventory projections cannot be deleted'; END$$
 
 CREATE TRIGGER inventory_balances_identity BEFORE UPDATE ON inventory_balances FOR EACH ROW BEGIN
-    IF NEW.tenant_id <> OLD.tenant_id OR NEW.legal_entity_id <> OLD.legal_entity_id OR NEW.warehouse_id <> OLD.warehouse_id OR NEW.sku_id <> OLD.sku_id OR NEW.layer_id <> OLD.layer_id 
+    IF NEW.tenant_id <> OLD.tenant_id OR NEW.legal_entity_id <> OLD.legal_entity_id OR NEW.warehouse_id <> OLD.warehouse_id OR NEW.sku_id <> OLD.sku_id OR NEW.layer_id <> OLD.layer_id
     THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Projection identity is immutable'; END IF;
   END$$
 
@@ -388,7 +388,7 @@ CREATE TRIGGER inventory_pool_balances_identity BEFORE UPDATE ON inventory_pool_
 CREATE TRIGGER inventory_balances_insert_guard BEFORE INSERT ON inventory_balances FOR EACH ROW BEGIN
     IF NOT EXISTS (SELECT 1 FROM inventory_physical_ledger p JOIN inventory_events e ON e.tenant_id = p.tenant_id AND e.legal_entity_id = p.legal_entity_id AND e.id = p.event_id
       JOIN stock_receipts r ON r.tenant_id = e.tenant_id AND r.legal_entity_id = e.legal_entity_id AND r.id = e.receipt_id
-      WHERE p.tenant_id = NEW.tenant_id AND p.legal_entity_id = NEW.legal_entity_id AND p.warehouse_id = NEW.warehouse_id AND p.sku_id = NEW.sku_id AND p.layer_id = NEW.layer_id 
+      WHERE p.tenant_id = NEW.tenant_id AND p.legal_entity_id = NEW.legal_entity_id AND p.warehouse_id = NEW.warehouse_id AND p.sku_id = NEW.sku_id AND p.layer_id = NEW.layer_id
         AND p.quantity = NEW.quantity AND p.value = NEW.value AND r.status = 'ASSEMBLING') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Projection requires its assembling receipt ledger'; END IF;
   END$$
 

@@ -4420,10 +4420,8 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
-            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
-            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
-            failure.
+            400 invalid fields or identifiers; 401 unauthenticated; 403 scope/permission/Origin; 404
+            inaccessible record; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -4488,10 +4486,9 @@ paths:
                 $ref: '#/components/schemas/Error'
         default:
           description: >-
-            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
-            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
-            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
-            failure.
+            400 invalid fields, dates, identifiers or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin or source unavailable; 404 route absent outside disposable
+            tests or inaccessible reference; 413 payload too large; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -4564,10 +4561,8 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
-            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
-            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
-            failure.
+            400 invalid fields or identifiers; 401 unauthenticated; 403 scope/permission/Origin; 404
+            inaccessible record; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -4640,10 +4635,8 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
-            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
-            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
-            failure.
+            400 invalid fields or identifiers; 401 unauthenticated; 403 scope/permission/Origin; 404
+            inaccessible record; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -4722,10 +4715,8 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
-            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
-            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
-            failure.
+            400 invalid fields or identifiers; 401 unauthenticated; 403 scope/permission/Origin; 404
+            inaccessible record; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -4798,10 +4789,8 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
-            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
-            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
-            failure.
+            400 invalid fields or identifiers; 401 unauthenticated; 403 scope/permission/Origin; 404
+            inaccessible record; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -4880,10 +4869,8 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
-            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
-            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
-            failure.
+            400 invalid fields or identifiers; 401 unauthenticated; 403 scope/permission/Origin; 404
+            inaccessible record; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -4922,10 +4909,8 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
-            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
-            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
-            failure.
+            400 invalid fields or identifiers; 401 unauthenticated; 403 scope/permission/Origin; 404
+            inaccessible record; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -4990,10 +4975,8 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
-            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
-            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
-            failure.
+            400 invalid fields or identifiers; 401 unauthenticated; 403 scope/permission/Origin; 404
+            inaccessible record; 500 sanitized failure.
           content:
             application/json:
               schema:
