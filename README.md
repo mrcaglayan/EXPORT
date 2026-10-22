@@ -10,8 +10,14 @@ and periods, balanced journals, posting requests, audit and idempotency.
 PR-01A adds product families, stockable SKUs, units of measure and product audit.
 PR-01B adds typed specifications, dated GTİP review with broker evidence, minimal
 supplier references and exact verified alias mappings with retained revisions.
-Dashboard, Inventory, Exports and VAT remain navigation placeholders.
-No inventory, purchasing or VAT calculations are implemented.
+PR-01C adds persistent product views, SKU drill-down, validation/duplicate
+feedback and the combined product release gate.
+PR-02A adds physical warehouses, virtual destination pools, calendar-linked
+inventory periods, movement-type definitions and inventory audit.
+Dashboard, Exports and VAT remain navigation placeholders.
+PR-02B adds receipt source layers, immutable physical/pool ledgers and stock
+balance views. Receipt posting currently accepts disposable test fixtures only;
+real purchase sources and VAT calculations remain planned.
 
 The application uses sidebar-only navigation. There is no top navigation/header
 or breadcrumb bar. On mobile, the floating Menu button opens the sidebar drawer.
@@ -20,7 +26,7 @@ sidebar or relevant page. Pages start directly with their main content, without
 separate “Your workspace”/page-name/subtitle introductions. Meaningful headings
 and actions stay within content panels.
 
-**Next: PR-01C — product UX polish and the combined product release gate.**
+**Next: PR-02C — destination allocation and approved pool borrowing.**
 The user-authorized [new design baseline](docs/design/PR01_PR02_database_specification.md)
 and [SQL reference](docs/design/PR01_PR02_schema.sql) were written on 21 October
 2026; the originally referenced files were not supplied.
@@ -139,8 +145,8 @@ is changed. For another approved server, use `db:migrate` with the server owner'
 DDL credentials supplied as `MIGRATION_DB_USER` and `MIGRATION_DB_PASSWORD` in
 the migration process environment only. Do not persist these in the API environment.
 
-These commands apply foundation metadata, identity/permissions and accounting
-structure. They do not configure accounting or create accounts or balances.
+These commands apply foundation metadata, identity/permissions, accounting,
+product and inventory setup structure. They do not create accounts or balances.
 No app route runs migrations automatically. See the
 [migration and recovery guide](docs/architecture/migrations.md) before retrying
 a failed or interrupted migration.
@@ -330,8 +336,8 @@ There is no remote repository or commit created by this bootstrap.
 
 See the [architecture and reference review](docs/architecture/bootstrap.md) and
 the [PR-00AA handoff](docs/pr-handoffs/PR-00AA.md) for the original scaffold.
-The [PR-01B handoff](docs/pr-handoffs/PR-01B.md) records the current changes,
-executed checks, package addition and known limitations.
+The [PR-02B handoff](docs/pr-handoffs/PR-02B.md) records the current changes,
+executed checks and known limitations.
 
 ## Product catalogue
 
@@ -377,3 +383,85 @@ npm --prefix backend run test:pr01b:browser
 
 The browser command includes product, classification, accounting and identity
 flows in a disposable database. No real supplier, tariff or invoice data is seeded.
+
+## Product views and release gate
+
+Use **View SKUs** on a family or **Details** on a SKU/alias to inspect that SKU.
+Product tabs, catalogue filters, list pages and the selected SKU are kept in the
+URL. Reload and browser Back preserve the view; Refresh reloads current details.
+URLs use the company currently selected in the sidebar and never grant access
+to another company's records. Alias lists also filter by supplier, SKU and review
+status. Filter pickers include inactive references; new proposals use active ones.
+
+New-code forms warn about detected active/inactive duplicates while preserving
+your input. The server remains the final uniqueness check, including concurrent
+submissions. Required wording, code/decimal formats and GTİP date order are checked
+before submission. Original supplier wording is retained unchanged. Failed reads
+have **Try again**, and an obsolete list page offers **Back to first page**.
+
+From the repository root, with its local MySQL running and port 5184 available:
+
+```text
+npm --prefix backend run test:pr01
+```
+
+This fail-fast command runs OpenAPI validation, frontend lint/build, journal editor
+regressions, foundation/fresh migrations, authentication, accounting, product and
+classification integration suites, then the combined browser flow once. Each
+integration stage creates/removes only its own disposable schema and account.
+`npm --prefix backend run test:pr01c` runs just the combined browser flow, including
+the new product UX checks. No development business records are changed. Neither
+command needs the development API/UI servers; the browser harness starts its own.
+See the [product UX contract](docs/architecture/product-ux.md).
+
+## Inventory setup
+
+Open **http://localhost:5173/inventory**. Add physical warehouses, then destination
+pools: one GENERAL pool and one COUNTRY pool per destination in the selected
+company. For example, one Istanbul warehouse can later hold stock allocated to
+AF, CM and GENERAL. Pools are company-wide definitions; future stock rows will
+reference both warehouse and pool. Creating these records creates no stock or GL.
+
+Use **Inventory periods** to link an open accounting period. Create its fiscal
+year/calendar in Accounting first. Dates are reused, and accounting and inventory
+statuses are displayed separately. Inventory closing is a later step. **Movement
+types** define fixed effects for future posting; they do not execute movements.
+Codes, country identity and movement effects stay fixed. Names/location/status
+are editable, and inactive codes remain reserved. Administrators can configure
+records and read the audit; inventory readers cannot change setup.
+
+```text
+npm --prefix backend run test:pr02a
+npm --prefix backend run test:pr02a:browser
+```
+
+These use disposable schemas. The browser command includes all earlier workflows;
+run only one browser gate at a time. The existing `test:pr01` gate covers the
+earlier domain regressions plus the shared browser flow. Refresh the local app
+after migration to load new permissions. See the
+[inventory foundation contract](docs/architecture/inventory-foundation.md).
+
+## Receipts and stock views
+
+Inventory now includes **Receipts**, **Stock balances**, **Pool balances**,
+**Source layers**, **Physical ledger** and **Pool ledger**. Open a receipt or source
+link to see its individual SKU lines, exact costs and original pool allocations.
+Use warehouse/pool filters or click a SKU to narrow stock records. Tables and
+receipt lines are paged; page size does not limit a receipt's total line count.
+
+The local company starts with no stock records. As required by the roadmap,
+receipt posting is tested only with synthetic sources in disposable schemas.
+The normal app has no receipt entry form or POST route until PR-03 connects
+authorized purchase invoices. No sample stock, journal or VAT has been seeded.
+Stock valuation is separate from financial posting.
+
+```text
+npm --prefix backend run test:pr02b
+npm --prefix backend run test:pr02b:browser
+```
+
+The receipt suite covers 301 lines, repeated SKUs, zero-cost goods, exact allocation
+rounding, concurrent retries, closed periods, scope, history immutability and full
+rollback. Run `test:pr02a` for setup regression and `test:pr01` for the earlier
+domains plus the combined browser flow. See the
+[receipt and ledger contract](docs/architecture/inventory-receipts.md).

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Export Accounting API
-  version: 0.6.0
+  version: 0.8.0
   description: >-
     PR-00B identity and scoped access, plus foundation health/readiness.
 
@@ -18,14 +18,16 @@ info:
     GET /api/v1/auth/csrf before writing, retaining cookies. No automatic signup.
 
 
-    PR-00C adds entity-scoped accounting, decimal strings, balanced immutable journals, audit/idempotency and
-    a durable posting-request boundary. No inventory, tax or exchange-rate policy is implemented.
+    PR-00C adds entity-scoped accounting, decimal strings, balanced immutable journals,
+    audit/idempotency and a durable posting-request boundary. No inventory, tax or exchange-rate
+    policy is implemented.
 
-    PR-01A adds scoped units, hierarchical families and stockable SKUs. No inventory quantities are created.
+    PR-01A adds scoped units, hierarchical families and stockable SKUs. No inventory quantities are
+    created.
 
-    PR-01B adds typed SKU specifications, broker-verification records for GTIP history and exact versioned
-    supplier aliases. A format-valid GTIP is not a classification decision. No tax rates or invoice imports
-    are implemented.
+    PR-01B adds typed SKU specifications, broker-verification records for GTIP history and exact
+    versioned supplier aliases. A format-valid GTIP is not a classification decision. No tax rates
+    or invoice imports are implemented.
 servers:
   - url: /
 paths:
@@ -53,7 +55,9 @@ paths:
     get:
       operationId: getReadiness
       summary: Check database connectivity and the registered schema version.
-      description: Read-only; never runs migrations. Returns 503 if configuration, database or schema is unavailable.
+      description: >-
+        Read-only; never runs migrations. Returns 503 if configuration, database or schema is
+        unavailable.
       parameters:
         - $ref: '#/components/parameters/RequestId'
       responses:
@@ -150,8 +154,8 @@ paths:
                         type: string
         '429':
           description: >-
-            Persistent 15-minute limits (20 per workspace/email and 100 per peer IP). Retry-After is 900
-            seconds.
+            Persistent 15-minute limits (20 per workspace/email and 100 per peer IP). Retry-After is
+            900 seconds.
           headers:
             Retry-After:
               schema:
@@ -334,8 +338,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.read for this entity. Results are scoped to the entity; no
-        caller-supplied tenant is accepted.
+        Requires workspace.read and accounting.read for this entity. Results are scoped to the
+        entity; no caller-supplied tenant is accepted.
       responses:
         '200':
           description: Successful scoped operation.
@@ -364,9 +368,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -378,8 +382,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.configure for this entity. Writes require JSON, allowed Origin,
-        CSRF and Idempotency-Key. Audit and idempotency commit with the change.
+        Requires workspace.read and accounting.configure for this entity. Writes require JSON,
+        allowed Origin, CSRF and Idempotency-Key. Audit and idempotency commit with the change.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -418,9 +422,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -435,8 +439,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.read for this entity. Results are scoped to the entity; no
-        caller-supplied tenant is accepted.
+        Requires workspace.read and accounting.read for this entity. Results are scoped to the
+        entity; no caller-supplied tenant is accepted.
       responses:
         '200':
           description: Successful scoped operation.
@@ -465,9 +469,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -493,8 +497,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.configure for this entity. Writes require JSON, allowed Origin,
-        CSRF and Idempotency-Key. Audit and idempotency commit with the change.
+        Requires workspace.read and accounting.configure for this entity. Writes require JSON,
+        allowed Origin, CSRF and Idempotency-Key. Audit and idempotency commit with the change.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -522,9 +526,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -539,8 +543,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.read for this entity. Results are scoped to the entity; no
-        caller-supplied tenant is accepted.
+        Requires workspace.read and accounting.read for this entity. Results are scoped to the
+        entity; no caller-supplied tenant is accepted.
       responses:
         '200':
           description: Successful scoped operation.
@@ -569,9 +573,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -597,8 +601,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.configure for this entity. Writes require JSON, allowed Origin,
-        CSRF and Idempotency-Key. Audit and idempotency commit with the change.
+        Requires workspace.read and accounting.configure for this entity. Writes require JSON,
+        allowed Origin, CSRF and Idempotency-Key. Audit and idempotency commit with the change.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -626,9 +630,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -643,8 +647,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.read for this entity. Results are scoped to the entity; no
-        caller-supplied tenant is accepted.
+        Requires workspace.read and accounting.read for this entity. Results are scoped to the
+        entity; no caller-supplied tenant is accepted.
       responses:
         '200':
           description: Successful scoped operation.
@@ -673,9 +677,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -701,8 +705,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.configure for this entity. Writes require JSON, allowed Origin,
-        CSRF and Idempotency-Key. Audit and idempotency commit with the change.
+        Requires workspace.read and accounting.configure for this entity. Writes require JSON,
+        allowed Origin, CSRF and Idempotency-Key. Audit and idempotency commit with the change.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -730,9 +734,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -747,8 +751,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.read for this entity. Results are scoped to the entity; no
-        caller-supplied tenant is accepted.
+        Requires workspace.read and accounting.read for this entity. Results are scoped to the
+        entity; no caller-supplied tenant is accepted.
       responses:
         '200':
           description: Successful scoped operation.
@@ -777,9 +781,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -805,8 +809,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.post for this entity. Writes require JSON, allowed Origin, CSRF
-        and Idempotency-Key. Audit and idempotency commit with the change.
+        Requires workspace.read and accounting.post for this entity. Writes require JSON, allowed
+        Origin, CSRF and Idempotency-Key. Audit and idempotency commit with the change.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -834,9 +838,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -851,8 +855,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.read for this entity. Results are scoped to the entity; no
-        caller-supplied tenant is accepted.
+        Requires workspace.read and accounting.read for this entity. Results are scoped to the
+        entity; no caller-supplied tenant is accepted.
       responses:
         '200':
           description: Successful scoped operation.
@@ -881,9 +885,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -909,8 +913,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.request for this entity. Writes require JSON, allowed Origin,
-        CSRF and Idempotency-Key. Audit and idempotency commit with the change.
+        Requires workspace.read and accounting.request for this entity. Writes require JSON, allowed
+        Origin, CSRF and Idempotency-Key. Audit and idempotency commit with the change.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -938,9 +942,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -955,9 +959,9 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.audit.read for this entity. Results are scoped to the entity;
-        no caller-supplied tenant is accepted. Only accounting action namespaces are returned; product audit
-        requires its own permission and endpoint.
+        Requires workspace.read and accounting.audit.read for this entity. Results are scoped to the
+        entity; no caller-supplied tenant is accepted. Only accounting action namespaces are
+        returned; product audit requires its own permission and endpoint.
       responses:
         '200':
           description: Successful scoped operation.
@@ -986,9 +990,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -1018,8 +1022,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.configure for this entity. Writes require JSON, allowed Origin,
-        CSRF and Idempotency-Key. Audit and idempotency commit with the change.
+        Requires workspace.read and accounting.configure for this entity. Writes require JSON,
+        allowed Origin, CSRF and Idempotency-Key. Audit and idempotency commit with the change.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -1047,9 +1051,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -1065,8 +1069,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.period.close for this entity. Writes require JSON, allowed
-        Origin, CSRF and Idempotency-Key. Audit and idempotency commit with the change.
+        Requires workspace.read and accounting.period.close for this entity. Writes require JSON,
+        allowed Origin, CSRF and Idempotency-Key. Audit and idempotency commit with the change.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -1116,9 +1120,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -1134,8 +1138,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.read for this entity. Results are scoped to the entity; no
-        caller-supplied tenant is accepted.
+        Requires workspace.read and accounting.read for this entity. Results are scoped to the
+        entity; no caller-supplied tenant is accepted.
       responses:
         '200':
           description: Successful scoped operation.
@@ -1153,9 +1157,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -1171,8 +1175,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.read for this entity. Results are scoped to the entity; no
-        caller-supplied tenant is accepted.
+        Requires workspace.read and accounting.read for this entity. Results are scoped to the
+        entity; no caller-supplied tenant is accepted.
       responses:
         '200':
           description: Successful scoped operation.
@@ -1190,9 +1194,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -1204,14 +1208,14 @@ paths:
     post:
       operationId: processPostingRequest
       summary: >-
-        Attempt posting. Known domain rejection returns FAILED with errorCode and no journal. Retry with a new
-        key after correcting the cause.
+        Attempt posting. Known domain rejection returns FAILED with errorCode and no journal. Retry
+        with a new key after correcting the cause.
       security:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and accounting.post for this entity. Writes require JSON, allowed Origin, CSRF
-        and Idempotency-Key. Audit and idempotency commit with the change.
+        Requires workspace.read and accounting.post for this entity. Writes require JSON, allowed
+        Origin, CSRF and Idempotency-Key. Audit and idempotency commit with the change.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -1241,9 +1245,9 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin; 404
-            inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency validation;
-            500 sanitized failure.
+            400 invalid input/missing idempotency key; 401 unauthenticated; 403 scope/CSRF/Origin;
+            404 inaccessible record; 409 state/idempotency/source conflict; 422 amount/date/currency
+            validation; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -1258,8 +1262,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.read. q is a literal case-insensitive substring of code/name;
-        pagination is ordered by code/id.
+        Requires workspace.read and products.read. q is a literal case-insensitive substring of
+        code/name; pagination is ordered by code/id.
       parameters:
         - name: offset
           in: query
@@ -1314,9 +1318,10 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope, permission, CSRF or
-            Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE, PRODUCT_IN_USE,
-            INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500 sanitized failure.
+            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope,
+            permission, CSRF or Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE,
+            PRODUCT_IN_USE, INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -1328,9 +1333,9 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.manage. Audit and idempotency commit atomically. New records
-        start active. Codes normalize to uppercase and are unique within the entity, including inactive
-        records.
+        Requires workspace.read and products.manage. Audit and idempotency commit atomically. New
+        records start active. Codes normalize to uppercase and are unique within the entity,
+        including inactive records.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -1358,9 +1363,10 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope, permission, CSRF or
-            Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE, PRODUCT_IN_USE,
-            INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500 sanitized failure.
+            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope,
+            permission, CSRF or Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE,
+            PRODUCT_IN_USE, INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -1398,9 +1404,10 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope, permission, CSRF or
-            Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE, PRODUCT_IN_USE,
-            INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500 sanitized failure.
+            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope,
+            permission, CSRF or Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE,
+            PRODUCT_IN_USE, INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -1412,9 +1419,9 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.manage. Audit and idempotency commit atomically. Supply editable
-        fields; code, quantityPrecision cannot change. Active references and acyclic family hierarchy
-        required.
+        Requires workspace.read and products.manage. Audit and idempotency commit atomically. Supply
+        editable fields; code, quantityPrecision cannot change. Active references and acyclic family
+        hierarchy required.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -1442,9 +1449,10 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope, permission, CSRF or
-            Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE, PRODUCT_IN_USE,
-            INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500 sanitized failure.
+            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope,
+            permission, CSRF or Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE,
+            PRODUCT_IN_USE, INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -1459,8 +1467,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.read. q is a literal case-insensitive substring of code/name;
-        pagination is ordered by code/id.
+        Requires workspace.read and products.read. q is a literal case-insensitive substring of
+        code/name; pagination is ordered by code/id.
       parameters:
         - name: offset
           in: query
@@ -1515,9 +1523,10 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope, permission, CSRF or
-            Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE, PRODUCT_IN_USE,
-            INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500 sanitized failure.
+            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope,
+            permission, CSRF or Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE,
+            PRODUCT_IN_USE, INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -1529,9 +1538,9 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.manage. Audit and idempotency commit atomically. New records
-        start active. Codes normalize to uppercase and are unique within the entity, including inactive
-        records.
+        Requires workspace.read and products.manage. Audit and idempotency commit atomically. New
+        records start active. Codes normalize to uppercase and are unique within the entity,
+        including inactive records.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -1559,9 +1568,10 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope, permission, CSRF or
-            Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE, PRODUCT_IN_USE,
-            INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500 sanitized failure.
+            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope,
+            permission, CSRF or Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE,
+            PRODUCT_IN_USE, INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -1599,9 +1609,10 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope, permission, CSRF or
-            Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE, PRODUCT_IN_USE,
-            INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500 sanitized failure.
+            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope,
+            permission, CSRF or Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE,
+            PRODUCT_IN_USE, INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -1613,8 +1624,9 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.manage. Audit and idempotency commit atomically. Supply editable
-        fields; code cannot change. Active references and acyclic family hierarchy required.
+        Requires workspace.read and products.manage. Audit and idempotency commit atomically. Supply
+        editable fields; code cannot change. Active references and acyclic family hierarchy
+        required.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -1642,9 +1654,10 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope, permission, CSRF or
-            Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE, PRODUCT_IN_USE,
-            INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500 sanitized failure.
+            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope,
+            permission, CSRF or Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE,
+            PRODUCT_IN_USE, INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -1659,8 +1672,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.read. q is a literal case-insensitive substring of code/name;
-        pagination is ordered by code/id.
+        Requires workspace.read and products.read. q is a literal case-insensitive substring of
+        code/name; pagination is ordered by code/id.
       parameters:
         - name: offset
           in: query
@@ -1720,9 +1733,10 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope, permission, CSRF or
-            Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE, PRODUCT_IN_USE,
-            INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500 sanitized failure.
+            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope,
+            permission, CSRF or Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE,
+            PRODUCT_IN_USE, INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -1734,9 +1748,9 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.manage. Audit and idempotency commit atomically. New records
-        start active. Codes normalize to uppercase and are unique within the entity, including inactive
-        records.
+        Requires workspace.read and products.manage. Audit and idempotency commit atomically. New
+        records start active. Codes normalize to uppercase and are unique within the entity,
+        including inactive records.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -1764,9 +1778,10 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope, permission, CSRF or
-            Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE, PRODUCT_IN_USE,
-            INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500 sanitized failure.
+            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope,
+            permission, CSRF or Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE,
+            PRODUCT_IN_USE, INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -1804,9 +1819,10 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope, permission, CSRF or
-            Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE, PRODUCT_IN_USE,
-            INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500 sanitized failure.
+            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope,
+            permission, CSRF or Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE,
+            PRODUCT_IN_USE, INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -1818,8 +1834,9 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.manage. Audit and idempotency commit atomically. Supply editable
-        fields; code, baseUnitId cannot change. Active references and acyclic family hierarchy required.
+        Requires workspace.read and products.manage. Audit and idempotency commit atomically. Supply
+        editable fields; code, baseUnitId cannot change. Active references and acyclic family
+        hierarchy required.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -1847,9 +1864,10 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope, permission, CSRF or
-            Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE, PRODUCT_IN_USE,
-            INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500 sanitized failure.
+            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope,
+            permission, CSRF or Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE,
+            PRODUCT_IN_USE, INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -1863,7 +1881,9 @@ paths:
       security:
         - SessionCookie: []
         - ProductionSessionCookie: []
-      description: Requires workspace.read and products.audit.read. Newest events first, with before/after details.
+      description: >-
+        Requires workspace.read and products.audit.read. Newest events first, with before/after
+        details.
       parameters:
         - name: offset
           in: query
@@ -1906,9 +1926,10 @@ paths:
                   - requestId
         default:
           description: >-
-            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope, permission, CSRF or
-            Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE, PRODUCT_IN_USE,
-            INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500 sanitized failure.
+            400 invalid input or missing idempotency key; 401 unauthenticated; 403 scope,
+            permission, CSRF or Origin; 404 inaccessible record; 409 DUPLICATE_CODE, FAMILY_CYCLE,
+            PRODUCT_IN_USE, INACTIVE_REFERENCE or IDEMPOTENCY_CONFLICT; 413 payload too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -1923,8 +1944,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.read in the explicit entity. Literal code/name substring; no
-        financial supplier records are created.
+        Requires workspace.read and products.read in the explicit entity. Literal code/name
+        substring; no financial supplier records are created.
       parameters:
         - name: offset
           in: query
@@ -1983,9 +2004,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2029,9 +2051,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2073,9 +2096,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2087,9 +2111,9 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.manage in the explicit entity. Supplier deactivation requires
-        rejecting/retiring active alias revisions. Definition values remain in history when a definition is
-        inactive.
+        Requires workspace.read and products.manage in the explicit entity. Supplier deactivation
+        requires rejecting/retiring active alias revisions. Definition values remain in history when
+        a definition is inactive.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -2120,9 +2144,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2137,8 +2162,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.read in the explicit entity. Literal code/name substring; no
-        financial supplier records are created.
+        Requires workspace.read and products.read in the explicit entity. Literal code/name
+        substring; no financial supplier records are created.
       parameters:
         - name: offset
           in: query
@@ -2197,9 +2222,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2243,9 +2269,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2287,9 +2314,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2301,9 +2329,9 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.manage in the explicit entity. Supplier deactivation requires
-        rejecting/retiring active alias revisions. Definition values remain in history when a definition is
-        inactive.
+        Requires workspace.read and products.manage in the explicit entity. Supplier deactivation
+        requires rejecting/retiring active alias revisions. Definition values remain in history when
+        a definition is inactive.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -2334,9 +2362,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2357,8 +2386,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.read in the explicit entity. Includes inactive definition
-        references.
+        Requires workspace.read and products.read in the explicit entity. Includes inactive
+        definition references.
       parameters:
         - name: offset
           in: query
@@ -2404,9 +2433,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2418,9 +2448,9 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.manage in the explicit entity. Active SKU and definition
-        required. Unique per SKU/definition. A stock-defining value is immutable after first assignment;
-        descriptive values may be replaced with audit.
+        Requires workspace.read and products.manage in the explicit entity. Active SKU and
+        definition required. Unique per SKU/definition. A stock-defining value is immutable after
+        first assignment; descriptive values may be replaced with audit.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -2451,9 +2481,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2474,8 +2505,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.read in the explicit entity. Newest effective-from first;
-        rejected/retired rows remain readable.
+        Requires workspace.read and products.read in the explicit entity. Newest effective-from
+        first; rejected/retired rows remain readable.
       parameters:
         - name: offset
           in: query
@@ -2531,9 +2562,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2545,9 +2577,10 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.manage in the explicit entity. Begins PENDING. Both dates
-        inclusive; null end is open-ended. Reject overlap with any PENDING/REVIEWED/VERIFIED entry for this
-        SKU. Same code on another SKU is allowed. Format validation does not classify goods.
+        Requires workspace.read and products.manage in the explicit entity. Begins PENDING. Both
+        dates inclusive; null end is open-ended. Reject overlap with any PENDING/REVIEWED/VERIFIED
+        entry for this SKU. Same code on another SKU is allowed. Format validation does not classify
+        goods.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -2578,9 +2611,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2601,9 +2635,9 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.read in the explicit entity. Returns null for inactive SKU or no
-        verified entry. Retired rows never resolve, including for historical dates. Multiple matches fail
-        closed.
+        Requires workspace.read and products.read in the explicit entity. Returns null for inactive
+        SKU or no verified entry. Retired rows never resolve, including for historical dates.
+        Multiple matches fail closed.
       parameters:
         - name: 'on'
           in: query
@@ -2716,9 +2750,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2760,9 +2795,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2783,10 +2819,11 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.review in the explicit entity. PENDING→REVIEWED/REJECTED;
-        REVIEWED→VERIFIED/REJECTED; VERIFIED→RETIRED. Reason required. Verification requires broker
-        name/reference/date; authenticated actor and timestamp are recorded. Retirement withdraws
-        applicability for all dates. No assertion that the app user is a licensed broker.
+        Requires workspace.read and products.review in the explicit entity.
+        PENDING→REVIEWED/REJECTED; REVIEWED→VERIFIED/REJECTED; VERIFIED→RETIRED. Reason required.
+        Verification requires broker name/reference/date; authenticated actor and timestamp are
+        recorded. Retirement withdraws applicability for all dates. No assertion that the app user
+        is a licensed broker.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -2817,9 +2854,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2840,9 +2878,9 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.review in the explicit entity. Cannot extend or precede its
-        start. Retains VERIFIED status and historical applicability. Audit records old/new dates and reason.
-        Use before adding a successor range.
+        Requires workspace.read and products.review in the explicit entity. Cannot extend or precede
+        its start. Retains VERIFIED status and historical applicability. Audit records old/new dates
+        and reason. Use before adding a successor range.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -2873,9 +2911,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2890,8 +2929,8 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.read in the explicit entity. Includes rejected/retired revisions.
-        Search is literal in supplier code/description or SKU code.
+        Requires workspace.read and products.read in the explicit entity. Includes rejected/retired
+        revisions. Search is literal in supplier code/description or SKU code.
       parameters:
         - name: offset
           in: query
@@ -2963,9 +3002,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -2978,9 +3018,10 @@ paths:
         - ProductionSessionCookie: []
       description: >-
         Requires workspace.read and products.manage in the explicit entity. Preserves original
-        code/description exactly. Source identity is entity+supplier+SHA256 of exact code/description. Only
-        one pending/reviewed/verified revision is allowed. After rejection/retirement, a new immutable
-        revision may reference a different candidate SKU. Active supplier/SKU required.
+        code/description exactly. Source identity is entity+supplier+SHA256 of exact
+        code/description. Only one pending/reviewed/verified revision is allowed. After
+        rejection/retirement, a new immutable revision may reference a different candidate SKU.
+        Active supplier/SKU required.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -3011,9 +3052,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -3055,9 +3097,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -3078,9 +3121,9 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.review in the explicit entity. PENDING→REVIEWED/REJECTED;
-        REVIEWED→VERIFIED/REJECTED; VERIFIED→RETIRED. Reason required. Retired/rejected revisions remain in
-        history and free the source for a new proposal.
+        Requires workspace.read and products.review in the explicit entity.
+        PENDING→REVIEWED/REJECTED; REVIEWED→VERIFIED/REJECTED; VERIFIED→RETIRED. Reason required.
+        Retired/rejected revisions remain in history and free the source for a new proposal.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -3111,9 +3154,10 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
           content:
             application/json:
               schema:
@@ -3128,10 +3172,11 @@ paths:
         - SessionCookie: []
         - ProductionSessionCookie: []
       description: >-
-        Requires workspace.read and products.read in the explicit entity. Read-only POST avoids sending
-        original supplier text in query URLs. Requires JSON, allowed Origin and CSRF; no idempotency key
-        required. Exact supplier+code+description only, with active supplier/SKU and VERIFIED revision. Never
-        fuzzy/GTIP/VAT/country matching. Returns null when there is no eligible exact match.
+        Requires workspace.read and products.read in the explicit entity. Read-only POST avoids
+        sending original supplier text in query URLs. Requires JSON, allowed Origin and CSRF; no
+        idempotency key required. Exact supplier+code+description only, with active supplier/SKU and
+        VERIFIED revision. Never fuzzy/GTIP/VAT/country matching. Returns null when there is no
+        eligible exact match.
       parameters:
         - $ref: '#/components/parameters/Csrf'
         - $ref: '#/components/parameters/Origin'
@@ -3182,8 +3227,8 @@ paths:
                         minLength: 1
                         maxLength: 1000
                         description: >-
-                          Original wording preserved, including whitespace and line breaks. Must contain
-                          non-whitespace text.
+                          Original wording preserved, including whitespace and line breaks. Must
+                          contain non-whitespace text.
                       supplierReferenceCode:
                         type: string
                         minLength: 1
@@ -3257,9 +3302,1698 @@ paths:
         default:
           description: >-
             400 validation or missing idempotency key; 401 unauthenticated; 403
-            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency conflict,
-            inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION, GTIP_DATE_RANGE,
-            ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500 sanitized failure.
+            assignment/permission/Origin/CSRF; 404 inaccessible record; 409 duplicate, idempotency
+            conflict, inactive reference, STOCK_IDENTITY_LOCKED, GTIP_OVERLAP, INVALID_TRANSITION,
+            GTIP_DATE_RANGE, ALIAS_ALREADY_ACTIVE or ambiguous match; 413 request too large; 500
+            sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/warehouses:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      operationId: listInventoryWarehouse
+      summary: List warehouses in the selected entity.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: q
+          in: query
+          schema:
+            type: string
+            minLength: 0
+            maxLength: 160
+        - name: active
+          in: query
+          schema:
+            type: string
+            enum:
+              - 'true'
+              - 'false'
+      description: >-
+        Requires workspace.read and inventory.read. Literal search; stable code/id ordering
+        (calendar dates descending for periods). No stock balances or accounting data beyond period
+        identity are returned.
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryWarehouse'
+                  total:
+                    type: integer
+                    minimum: 0
+                  offset:
+                    type: integer
+                    minimum: 0
+                  limit:
+                    type: integer
+                    minimum: 1
+                    maximum: 100
+                  requestId:
+                    type: string
+                required:
+                  - items
+                  - total
+                  - offset
+                  - limit
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      operationId: createInventoryWarehouse
+      summary: Create warehouses metadata.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.configure. Signed CSRF, Origin, JSON, idempotency and
+        atomic inventory audit. Records start active. Codes and movement effects are fixed after
+        creation. Metadata alone cannot execute a stock movement.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryWarehouseInput'
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/InventoryWarehouse'
+                  requestId:
+                    type: string
+                required:
+                  - item
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/warehouses/{id}:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      operationId: getInventoryWarehouse
+      summary: Get warehouses metadata.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: Requires workspace.read and inventory.read; foreign records are not accessible.
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/InventoryWarehouse'
+                  requestId:
+                    type: string
+                required:
+                  - item
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      operationId: updateInventoryWarehouse
+      summary: Update warehouses metadata.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.configure. Signed CSRF, Origin, JSON, idempotency and
+        atomic inventory audit. Only name, active flag and warehouse location can change.
+        Identity/effect fields are rejected. Deletion is not implemented.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryWarehouseUpdate'
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/InventoryWarehouse'
+                  requestId:
+                    type: string
+                required:
+                  - item
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/pools:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      operationId: listInventoryPool
+      summary: List pools in the selected entity.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: q
+          in: query
+          schema:
+            type: string
+            minLength: 0
+            maxLength: 160
+        - name: active
+          in: query
+          schema:
+            type: string
+            enum:
+              - 'true'
+              - 'false'
+        - name: kind
+          in: query
+          schema:
+            type: string
+            enum:
+              - GENERAL
+              - COUNTRY
+      description: >-
+        Requires workspace.read and inventory.read. Literal search; stable code/id ordering
+        (calendar dates descending for periods). No stock balances or accounting data beyond period
+        identity are returned.
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryPool'
+                  total:
+                    type: integer
+                    minimum: 0
+                  offset:
+                    type: integer
+                    minimum: 0
+                  limit:
+                    type: integer
+                    minimum: 1
+                    maximum: 100
+                  requestId:
+                    type: string
+                required:
+                  - items
+                  - total
+                  - offset
+                  - limit
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      operationId: createInventoryPool
+      summary: Create pools metadata.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.configure. Signed CSRF, Origin, JSON, idempotency and
+        atomic inventory audit. Code is derived: GENERAL or countryCode. At most one GENERAL and one
+        pool per country/entity, including inactive rows. No warehouse, quantity, value or journal
+        is created.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryPoolInput'
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/InventoryPool'
+                  requestId:
+                    type: string
+                required:
+                  - item
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/pools/{id}:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      operationId: getInventoryPool
+      summary: Get pools metadata.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: Requires workspace.read and inventory.read; foreign records are not accessible.
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/InventoryPool'
+                  requestId:
+                    type: string
+                required:
+                  - item
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      operationId: updateInventoryPool
+      summary: Update pools metadata.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.configure. Signed CSRF, Origin, JSON, idempotency and
+        atomic inventory audit. Only name, active flag and warehouse location can change.
+        Identity/effect fields are rejected. Deletion is not implemented.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryPoolUpdate'
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/InventoryPool'
+                  requestId:
+                    type: string
+                required:
+                  - item
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/periods:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      operationId: listInventoryPeriod
+      summary: List periods in the selected entity.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: q
+          in: query
+          schema:
+            type: string
+            minLength: 0
+            maxLength: 160
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - OPEN
+              - IN_REVIEW
+              - CLOSED
+      description: >-
+        Requires workspace.read and inventory.read. Literal search; stable code/id ordering
+        (calendar dates descending for periods). No stock balances or accounting data beyond period
+        identity are returned.
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryPeriod'
+                  total:
+                    type: integer
+                    minimum: 0
+                  offset:
+                    type: integer
+                    minimum: 0
+                  limit:
+                    type: integer
+                    minimum: 1
+                    maximum: 100
+                  requestId:
+                    type: string
+                required:
+                  - items
+                  - total
+                  - offset
+                  - limit
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      operationId: createInventoryPeriod
+      summary: Create periods metadata.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.configure. Signed CSRF, Origin, JSON, idempotency and
+        atomic inventory audit. Links one OPEN accounting period; reuses code and dates. Inventory
+        status starts OPEN. Closing/reopening is not implemented.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryPeriodInput'
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/InventoryPeriod'
+                  requestId:
+                    type: string
+                required:
+                  - item
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/periods/{id}:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      operationId: getInventoryPeriod
+      summary: Get periods metadata.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: Requires workspace.read and inventory.read; foreign records are not accessible.
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/InventoryPeriod'
+                  requestId:
+                    type: string
+                required:
+                  - item
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/movement-types:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      operationId: listInventoryMovementType
+      summary: List movement-types in the selected entity.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: q
+          in: query
+          schema:
+            type: string
+            minLength: 0
+            maxLength: 160
+        - name: active
+          in: query
+          schema:
+            type: string
+            enum:
+              - 'true'
+              - 'false'
+      description: >-
+        Requires workspace.read and inventory.read. Literal search; stable code/id ordering
+        (calendar dates descending for periods). No stock balances or accounting data beyond period
+        identity are returned.
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryMovementType'
+                  total:
+                    type: integer
+                    minimum: 0
+                  offset:
+                    type: integer
+                    minimum: 0
+                  limit:
+                    type: integer
+                    minimum: 1
+                    maximum: 100
+                  requestId:
+                    type: string
+                required:
+                  - items
+                  - total
+                  - offset
+                  - limit
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      operationId: createInventoryMovementType
+      summary: Create movement-types metadata.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.configure. Signed CSRF, Origin, JSON, idempotency and
+        atomic inventory audit. Records start active. Codes and movement effects are fixed after
+        creation. Metadata alone cannot execute a stock movement.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryMovementTypeInput'
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/InventoryMovementType'
+                  requestId:
+                    type: string
+                required:
+                  - item
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/movement-types/{id}:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      operationId: getInventoryMovementType
+      summary: Get movement-types metadata.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: Requires workspace.read and inventory.read; foreign records are not accessible.
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/InventoryMovementType'
+                  requestId:
+                    type: string
+                required:
+                  - item
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      operationId: updateInventoryMovementType
+      summary: Update movement-types metadata.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.configure. Signed CSRF, Origin, JSON, idempotency and
+        atomic inventory audit. Only name, active flag and warehouse location can change.
+        Identity/effect fields are rejected. Deletion is not implemented.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryMovementTypeUpdate'
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/InventoryMovementType'
+                  requestId:
+                    type: string
+                required:
+                  - item
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/accounting-periods:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      operationId: listInventoryCalendarPeriod
+      summary: List accounting-periods in the selected entity.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: q
+          in: query
+          schema:
+            type: string
+            minLength: 0
+            maxLength: 160
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - OPEN
+              - CLOSED
+      description: >-
+        Requires workspace.read and inventory.read. Literal search; stable code/id ordering
+        (calendar dates descending for periods). No stock balances or accounting data beyond period
+        identity are returned.
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryCalendarPeriod'
+                  total:
+                    type: integer
+                    minimum: 0
+                  offset:
+                    type: integer
+                    minimum: 0
+                  limit:
+                    type: integer
+                    minimum: 1
+                    maximum: 100
+                  requestId:
+                    type: string
+                required:
+                  - items
+                  - total
+                  - offset
+                  - limit
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/accounting-periods/{id}:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      operationId: getInventoryCalendarPeriod
+      summary: Get accounting-periods metadata.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: Requires workspace.read and inventory.read; foreign records are not accessible.
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/InventoryCalendarPeriod'
+                  requestId:
+                    type: string
+                required:
+                  - item
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/countries:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      operationId: listInventoryCountries
+      summary: List assigned destination country codes.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.read. Fixed 249-code snapshot with English runtime
+        display names; no query parameters. Codes are verified against the published RIPE ISO list
+        as of 22 October 2026. Reserved/user-assigned codes are excluded.
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    maxItems: 249
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                          pattern: ^[A-Z]{2}$
+                        name:
+                          type: string
+                          minLength: 1
+                          maxLength: 160
+                      required:
+                        - code
+                        - name
+                      additionalProperties: false
+                  requestId:
+                    type: string
+                required:
+                  - items
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/audit-events:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      operationId: listInventoryAudit
+      summary: Read inventory audit history.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.audit.read. Only inventory.* actions in the selected
+        entity; newest first.
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+      responses:
+        '200':
+          description: Successful scoped metadata operation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditEvent'
+                  total:
+                    type: integer
+                    minimum: 0
+                  offset:
+                    type: integer
+                    minimum: 0
+                  limit:
+                    type: integer
+                    minimum: 1
+                    maximum: 100
+                  requestId:
+                    type: string
+                required:
+                  - items
+                  - total
+                  - offset
+                  - limit
+                  - requestId
+                additionalProperties: false
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/receipts:
+    get:
+      summary: List receipts
+      description: >-
+        Posted receipt records only. Exact decimal strings; pool balances divide physical quantity.
+        Requires inventory.read and assigned entity scope.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/InventoryEntity'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: warehouseId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 128
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockReceipt'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      operationId: postFixtureStockReceipt
+      summary: Post a receipt from a disposable test fixture
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        PR-02B test harness only: registered only with NODE_ENV=test and matching
+        PR00_TEST_DATABASE/DB_NAME disposable-schema identity. Absent (404) in the normal app.
+        Requires inventory.receipt.post, session CSRF and Idempotency-Key. PR-03 must add an
+        authorized purchase source adapter before live receipt writes. Validates both open periods,
+        active references, RECEIPT effect, SKU precision and pool quantity conservation. Line cost
+        rounds half-up to six places; largest-remainder allocation reconciles pool values. No GL or
+        VAT posting. Replays the same key/source exactly; changed content conflicts.
+      parameters:
+        - $ref: '#/components/parameters/InventoryEntity'
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockReceiptInput'
+      responses:
+        '200':
+          description: Posted or replayed receipt
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  receipt:
+                    $ref: '#/components/schemas/StockReceipt'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - receipt
+                  - requestId
+        '409':
+          description: >-
+            Idempotency/source conflict, closed period, inactive reference, movement effect mismatch
+            or accounting not configured.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: >-
+            Invalid amount/quantity, overflow, allocation mismatch, SKU precision, missing period or
+            currency mismatch.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/layers:
+    get:
+      summary: List layers
+      description: >-
+        Original source layers in received-date/created-time/UUID FIFO order. Requires
+        inventory.read and assigned entity scope.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/InventoryEntity'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: warehouseId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: skuId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockLayer'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/balances:
+    get:
+      summary: List balances
+      description: >-
+        Posted receipt records only. Exact decimal strings; pool balances divide physical quantity.
+        Requires inventory.read and assigned entity scope.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/InventoryEntity'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: warehouseId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: skuId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockLayer'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/pool-balances:
+    get:
+      summary: List pool-balances
+      description: >-
+        Posted receipt records only. Exact decimal strings; pool balances divide physical quantity.
+        Requires inventory.read and assigned entity scope.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/InventoryEntity'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: warehouseId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: skuId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: poolId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PoolStockBalance'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/physical-ledger:
+    get:
+      summary: List physical-ledger
+      description: >-
+        Posted receipt records only. Exact decimal strings; pool balances divide physical quantity.
+        Requires inventory.read and assigned entity scope.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/InventoryEntity'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: warehouseId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: skuId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PhysicalStockEntry'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/pool-ledger:
+    get:
+      summary: List pool-ledger
+      description: >-
+        Posted receipt records only. Exact decimal strings; pool balances divide physical quantity.
+        Requires inventory.read and assigned entity scope.
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/InventoryEntity'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: warehouseId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: skuId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: poolId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PoolStockEntry'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/receipts/{id}:
+    get:
+      summary: Read posted receipt
+      description: ' Requires inventory.read and assigned entity scope.'
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/InventoryEntity'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  receipt:
+                    $ref: '#/components/schemas/StockReceipt'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - receipt
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/receipts/{id}/lines:
+    get:
+      summary: Read paginated receipt lines with original allocations
+      description: ' Requires inventory.read and assigned entity scope.'
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/InventoryEntity'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockReceiptLine'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, country or idempotency key; 401 unauthenticated; 403
+            scope/permission/CSRF/Origin; 404 inaccessible record; 409 DUPLICATE_CODE,
+            IDEMPOTENCY_CONFLICT or ACCOUNTING_PERIOD_CLOSED; 413 payload too large; 500 sanitized
+            failure.
           content:
             application/json:
               schema:
@@ -3306,7 +5040,9 @@ components:
       schema:
         type: string
         format: uuid
-      description: Explicit entity; backend permissions are checked independently of the selected browser context.
+      description: >-
+        Explicit entity; backend permissions are checked independently of the selected browser
+        context.
     AccountingId:
       name: id
       in: path
@@ -3324,9 +5060,17 @@ components:
         maxLength: 128
         pattern: ^[A-Za-z0-9._:-]+$
       description: >-
-        Retain on retry after unknown outcomes. Bound to normalized payload, operation, actor and entity.
-        Reuse with different content returns 409. Records do not expire.
+        Retain on retry after unknown outcomes. Bound to normalized payload, operation, actor and
+        entity. Reuse with different content returns 409. Records do not expire.
     ProductEntity:
+      name: entityId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Explicit assigned entity; tenant comes from the authenticated identity.
+    InventoryEntity:
       name: entityId
       in: path
       required: true
@@ -3518,8 +5262,8 @@ components:
       pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
       example: '123.450000'
       description: >-
-        Nonnegative decimal string, never a JSON number. At most DECIMAL(20,6); responses have six fractional
-        digits.
+        Nonnegative decimal string, never a JSON number. At most DECIMAL(20,6); responses have six
+        fractional digits.
     AccountingSettings:
       type: object
       properties:
@@ -3754,8 +5498,9 @@ components:
         - lines
       additionalProperties: false
       description: >-
-        Each line has exactly one positive side. Exact debit/credit sums must match and fit DECIMAL(20,6).
-        Source identity is unique per entity. Only the entity base currency is accepted.
+        Each line has exactly one positive side. Exact debit/credit sums must match and fit
+        DECIMAL(20,6). Source identity is unique per entity. Only the entity base currency is
+        accepted.
     Journal:
       type: object
       properties:
@@ -4307,9 +6052,9 @@ components:
               maxLength: 1000
             - type: boolean
           description: >-
-            TEXT is trimmed nonempty text. DECIMAL must be a string: optional minus, up to 14 integer and 6
-            fractional digits, no exponent or rounding; responses use six places. BOOLEAN must be JSON
-            true/false.
+            TEXT is trimmed nonempty text. DECIMAL must be a string: optional minus, up to 14
+            integer and 6 fractional digits, no exponent or rounding; responses use six places.
+            BOOLEAN must be JSON true/false.
       required:
         - definitionId
         - value
@@ -4335,9 +6080,9 @@ components:
               maxLength: 1000
             - type: boolean
           description: >-
-            TEXT is trimmed nonempty text. DECIMAL must be a string: optional minus, up to 14 integer and 6
-            fractional digits, no exponent or rounding; responses use six places. BOOLEAN must be JSON
-            true/false.
+            TEXT is trimmed nonempty text. DECIMAL must be a string: optional minus, up to 14
+            integer and 6 fractional digits, no exponent or rounding; responses use six places.
+            BOOLEAN must be JSON true/false.
         code:
           type: string
           minLength: 1
@@ -4558,8 +6303,8 @@ components:
           minLength: 1
           maxLength: 1000
           description: >-
-            Original wording preserved, including whitespace and line breaks. Must contain non-whitespace
-            text.
+            Original wording preserved, including whitespace and line breaks. Must contain
+            non-whitespace text.
         skuId:
           type: string
           format: uuid
@@ -4589,8 +6334,8 @@ components:
           minLength: 1
           maxLength: 1000
           description: >-
-            Original wording preserved, including whitespace and line breaks. Must contain non-whitespace
-            text.
+            Original wording preserved, including whitespace and line breaks. Must contain
+            non-whitespace text.
       required:
         - supplierId
         - supplierDescription
@@ -4646,8 +6391,8 @@ components:
           minLength: 1
           maxLength: 1000
           description: >-
-            Original wording preserved, including whitespace and line breaks. Must contain non-whitespace
-            text.
+            Original wording preserved, including whitespace and line breaks. Must contain
+            non-whitespace text.
         supplierReferenceCode:
           type: string
           minLength: 1
@@ -4710,9 +6455,864 @@ components:
         - reviewedAt
         - verifiedBy
         - verifiedAt
+    InventoryWarehouseInput:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_-]*$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        location:
+          type: string
+          minLength: 0
+          maxLength: 500
+      required:
+        - code
+        - name
+      additionalProperties: false
+    InventoryWarehouseUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        location:
+          type: string
+          minLength: 0
+          maxLength: 500
+        active:
+          type: boolean
+      required:
+        - name
+        - active
+      additionalProperties: false
+    InventoryWarehouse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_-]*$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        location:
+          type: string
+          minLength: 0
+          maxLength: 500
+        active:
+          type: boolean
+      required:
+        - id
+        - code
+        - name
+        - location
+        - active
+      additionalProperties: false
+    InventoryPoolInput:
+      oneOf:
+        - type: object
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 160
+            kind:
+              type: string
+              enum:
+                - GENERAL
+            countryCode:
+              type: string
+              nullable: true
+              enum:
+                - null
+          required:
+            - name
+            - kind
+          additionalProperties: false
+        - type: object
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 160
+            kind:
+              type: string
+              enum:
+                - COUNTRY
+            countryCode:
+              type: string
+              minLength: 2
+              maxLength: 2
+              nullable: false
+              description: >-
+                Assigned ISO 3166-1 alpha-2 code from /countries for COUNTRY; null for GENERAL.
+                Creation normalizes uppercase.
+          required:
+            - name
+            - kind
+            - countryCode
+          additionalProperties: false
+    InventoryPoolUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        active:
+          type: boolean
+      required:
+        - name
+        - active
+      additionalProperties: false
+    InventoryPool:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_-]*$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        kind:
+          type: string
+          enum:
+            - GENERAL
+            - COUNTRY
+        countryCode:
+          type: string
+          minLength: 2
+          maxLength: 2
+          nullable: true
+          description: >-
+            Assigned ISO 3166-1 alpha-2 code from /countries for COUNTRY; null for GENERAL. Creation
+            normalizes uppercase.
+        active:
+          type: boolean
+      required:
+        - id
+        - code
+        - name
+        - kind
+        - countryCode
+        - active
+      additionalProperties: false
+    InventoryMovementTypeInput:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_-]*$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        effect:
+          type: string
+          enum:
+            - RECEIPT
+            - ISSUE
+            - REALLOCATION
+            - ADJUSTMENT_IN
+            - ADJUSTMENT_OUT
+            - REVALUATION
+      required:
+        - code
+        - name
+        - effect
+      additionalProperties: false
+    InventoryMovementTypeUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        active:
+          type: boolean
+      required:
+        - name
+        - active
+      additionalProperties: false
+    InventoryMovementType:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_-]*$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        effect:
+          type: string
+          enum:
+            - RECEIPT
+            - ISSUE
+            - REALLOCATION
+            - ADJUSTMENT_IN
+            - ADJUSTMENT_OUT
+            - REVALUATION
+        active:
+          type: boolean
+      required:
+        - id
+        - code
+        - name
+        - effect
+        - active
+      additionalProperties: false
+    InventoryPeriodInput:
+      type: object
+      properties:
+        accountingPeriodId:
+          type: string
+          format: uuid
+      required:
+        - accountingPeriodId
+      additionalProperties: false
+    InventoryPeriod:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_-]*$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+            - OPEN
+            - IN_REVIEW
+            - CLOSED
+        accountingPeriodId:
+          type: string
+          format: uuid
+        accountingStatus:
+          type: string
+          enum:
+            - OPEN
+            - CLOSED
+      required:
+        - id
+        - code
+        - name
+        - startDate
+        - endDate
+        - status
+        - accountingPeriodId
+        - accountingStatus
+      additionalProperties: false
+    InventoryCalendarPeriod:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          minLength: 1
+          maxLength: 40
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_-]*$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum:
+            - OPEN
+            - CLOSED
+        inventoryPeriodId:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+        - id
+        - code
+        - name
+        - startDate
+        - endDate
+        - status
+        - inventoryPeriodId
+      additionalProperties: false
+    StockAllocation:
+      type: object
+      additionalProperties: false
+      properties:
+        poolId:
+          type: string
+          format: uuid
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+      required:
+        - poolId
+        - quantity
+    ReceiptLineInput:
+      type: object
+      additionalProperties: false
+      properties:
+        sourceLineKey:
+          type: string
+          maxLength: 64
+          pattern: ^[A-Za-z0-9._:-]+$
+        skuId:
+          type: string
+          format: uuid
+        description:
+          type: string
+          maxLength: 255
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        unitCost:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        allocations:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/StockAllocation'
+      required:
+        - sourceLineKey
+        - skuId
+        - quantity
+        - unitCost
+        - allocations
+    StockReceiptInput:
+      type: object
+      additionalProperties: false
+      properties:
+        sourceId:
+          type: string
+          maxLength: 128
+          pattern: ^[A-Za-z0-9._:-]+$
+        documentDate:
+          type: string
+          format: date
+        postingDate:
+          type: string
+          format: date
+        warehouseId:
+          type: string
+          format: uuid
+        movementTypeId:
+          type: string
+          format: uuid
+        currency:
+          type: string
+          enum:
+            - TRY
+            - USD
+            - EUR
+            - GBP
+        description:
+          type: string
+          maxLength: 255
+        lines:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ReceiptLineInput'
+          description: No fixed line-count ceiling. The shared 1 MiB request guard applies.
+      required:
+        - sourceId
+        - documentDate
+        - postingDate
+        - warehouseId
+        - movementTypeId
+        - currency
+        - description
+        - lines
+    StockReceipt:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        sourceKind:
+          type: string
+          enum:
+            - TEST_FIXTURE
+        sourceId:
+          type: string
+          maxLength: 128
+        documentDate:
+          type: string
+          format: date
+        postingDate:
+          type: string
+          format: date
+        periodId:
+          type: string
+          format: uuid
+        warehouseId:
+          type: string
+          format: uuid
+        movementTypeId:
+          type: string
+          format: uuid
+        currency:
+          type: string
+          maxLength: 3
+        description:
+          type: string
+          maxLength: 255
+        totalValue:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        status:
+          type: string
+          enum:
+            - POSTED
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - sourceKind
+        - sourceId
+        - documentDate
+        - postingDate
+        - periodId
+        - warehouseId
+        - movementTypeId
+        - currency
+        - description
+        - totalValue
+        - status
+        - createdAt
+    ReceiptAllocation:
+      type: object
+      additionalProperties: false
+      properties:
+        poolId:
+          type: string
+          format: uuid
+        poolCode:
+          type: string
+          maxLength: 40
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+      required:
+        - poolId
+        - poolCode
+        - quantity
+        - value
+    StockReceiptLine:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        lineNumber:
+          type: integer
+          minimum: 1
+        sourceLineKey:
+          type: string
+          maxLength: 64
+        skuId:
+          type: string
+          format: uuid
+        skuCode:
+          type: string
+          maxLength: 40
+        description:
+          type: string
+          maxLength: 255
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        unitCost:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        layerId:
+          type: string
+          format: uuid
+        unitCode:
+          type: string
+          maxLength: 40
+        allocations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReceiptAllocation'
+      required:
+        - id
+        - lineNumber
+        - sourceLineKey
+        - skuId
+        - skuCode
+        - description
+        - quantity
+        - unitCost
+        - value
+        - layerId
+        - unitCode
+        - allocations
+    StockLayer:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          maxLength: 128
+        warehouseId:
+          type: string
+          format: uuid
+        warehouseCode:
+          type: string
+          maxLength: 40
+        skuId:
+          type: string
+          format: uuid
+        skuCode:
+          type: string
+          maxLength: 40
+        unitCode:
+          type: string
+          maxLength: 40
+        layerId:
+          type: string
+          format: uuid
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        unitCost:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        receivedDate:
+          type: string
+          format: date
+        currency:
+          type: string
+          maxLength: 3
+        receiptId:
+          type: string
+          format: uuid
+        sourceId:
+          type: string
+          maxLength: 128
+        sourceLineKey:
+          type: string
+          maxLength: 64
+      required:
+        - id
+        - warehouseId
+        - warehouseCode
+        - skuId
+        - skuCode
+        - unitCode
+        - layerId
+        - quantity
+        - value
+        - unitCost
+        - receivedDate
+        - currency
+        - receiptId
+        - sourceId
+        - sourceLineKey
+    PhysicalStockEntry:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          maxLength: 128
+        warehouseId:
+          type: string
+          format: uuid
+        warehouseCode:
+          type: string
+          maxLength: 40
+        skuId:
+          type: string
+          format: uuid
+        skuCode:
+          type: string
+          maxLength: 40
+        unitCode:
+          type: string
+          maxLength: 40
+        layerId:
+          type: string
+          format: uuid
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        unitCost:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        receivedDate:
+          type: string
+          format: date
+        currency:
+          type: string
+          maxLength: 3
+        receiptId:
+          type: string
+          format: uuid
+        sourceId:
+          type: string
+          maxLength: 128
+        sourceLineKey:
+          type: string
+          maxLength: 64
+        eventId:
+          type: string
+          format: uuid
+      required:
+        - id
+        - warehouseId
+        - warehouseCode
+        - skuId
+        - skuCode
+        - unitCode
+        - layerId
+        - quantity
+        - value
+        - unitCost
+        - receivedDate
+        - currency
+        - receiptId
+        - sourceId
+        - sourceLineKey
+        - eventId
+    PoolStockEntry:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          maxLength: 128
+        warehouseId:
+          type: string
+          format: uuid
+        warehouseCode:
+          type: string
+          maxLength: 40
+        skuId:
+          type: string
+          format: uuid
+        skuCode:
+          type: string
+          maxLength: 40
+        unitCode:
+          type: string
+          maxLength: 40
+        layerId:
+          type: string
+          format: uuid
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        unitCost:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        receivedDate:
+          type: string
+          format: date
+        currency:
+          type: string
+          maxLength: 3
+        receiptId:
+          type: string
+          format: uuid
+        sourceId:
+          type: string
+          maxLength: 128
+        sourceLineKey:
+          type: string
+          maxLength: 64
+        eventId:
+          type: string
+          format: uuid
+        poolId:
+          type: string
+          format: uuid
+        poolCode:
+          type: string
+          maxLength: 40
+      required:
+        - id
+        - warehouseId
+        - warehouseCode
+        - skuId
+        - skuCode
+        - unitCode
+        - layerId
+        - quantity
+        - value
+        - unitCost
+        - receivedDate
+        - currency
+        - receiptId
+        - sourceId
+        - sourceLineKey
+        - eventId
+        - poolId
+        - poolCode
+    PoolStockBalance:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          maxLength: 128
+        warehouseId:
+          type: string
+          format: uuid
+        warehouseCode:
+          type: string
+          maxLength: 40
+        skuId:
+          type: string
+          format: uuid
+        skuCode:
+          type: string
+          maxLength: 40
+        unitCode:
+          type: string
+          maxLength: 40
+        layerId:
+          type: string
+          format: uuid
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        unitCost:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        receivedDate:
+          type: string
+          format: date
+        currency:
+          type: string
+          maxLength: 3
+        receiptId:
+          type: string
+          format: uuid
+        sourceId:
+          type: string
+          maxLength: 128
+        sourceLineKey:
+          type: string
+          maxLength: 64
+        poolId:
+          type: string
+          format: uuid
+        poolCode:
+          type: string
+          maxLength: 40
+      required:
+        - id
+        - warehouseId
+        - warehouseCode
+        - skuId
+        - skuCode
+        - unitCode
+        - layerId
+        - quantity
+        - value
+        - unitCost
+        - receivedDate
+        - currency
+        - receiptId
+        - sourceId
+        - sourceLineKey
+        - poolId
+        - poolCode
   responses:
     Profile:
-      description: Identity and current entity permissions; activeEntity may be null when no access is assigned.
+      description: >-
+        Identity and current entity permissions; activeEntity may be null when no access is
+        assigned.
       content:
         application/json:
           schema:

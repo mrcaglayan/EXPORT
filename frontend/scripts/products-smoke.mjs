@@ -50,6 +50,7 @@ export async function checkProducts(page, base, artifacts) {
   // The API retains inactive codes; an attempted duplicate stays editable.
   await page.getByRole('button', { name: 'Add SKU', exact: true }).click()
   await page.getByLabel('Code', { exact: true }).fill('ZARF-A4')
+  await page.getByRole('status').filter({ hasText: 'Code ZARF-A4 already exists (inactive)' }).waitFor()
   await page.getByLabel('Name', { exact: true }).fill('Duplicate')
   await page.getByLabel('Product family', { exact: true }).selectOption({ label: 'ZARF — Zarf' })
   await page.getByLabel('Base unit', { exact: true }).selectOption({ label: 'EA — Adet' })

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Field, Feedback, inputStyle, Table, Cell, Pager } from '@/pages/accounting/accounting-ui'
+import { Field, Feedback, inputStyle, Table, Cell } from '@/pages/accounting/accounting-ui'
 import { useAccountingMutation } from '@/pages/accounting/useAccounting'
 import { useProducts } from './useProducts'
 import ProductPicker from './ProductPicker'
+import { ProductFormShell, ProductLoadState, ProductPager } from './product-ui'
 
 export default function AttributePanel({ base, skuId, revision, onSaved, canManage }) {
   const [offset, setOffset] = useState(0)
@@ -15,7 +16,7 @@ export default function AttributePanel({ base, skuId, revision, onSaved, canMana
   const definition = selected.data?.item
   return <section aria-label="SKU specifications">
     <h3 className="font-semibold">Specifications</h3>
-    {canManage && <form aria-label="SKU specification" className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4" onSubmit={async e => {
+    {canManage && <ProductFormShell aria-label="SKU specification" className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4" onSubmit={async e => {
       e.preventDefault()
       if (!definition || action.busy) return
       if (await action.submit(`skus/${skuId}/attributes`, { definitionId, value: definition.dataType === 'BOOLEAN' ? value === 'true' : value }, 'Specification saved.')) { setDefinitionId(null); setValue('') }
@@ -23,15 +24,17 @@ export default function AttributePanel({ base, skuId, revision, onSaved, canMana
       <ProductPicker base={base} resource="attribute-definitions" revision={revision} label="Specification" required value={definitionId} onChange={id => { setDefinitionId(id); setValue(''); action.clearFeedback() }} />
       <div className="space-y-4">{definition && <>
         {definition.dataType === 'BOOLEAN' ? <Field label="Specification value"><select className={inputStyle} value={value || 'false'} onChange={e => setValue(e.target.value)}><option value="false">No</option><option value="true">Yes</option></select></Field>
-          : <Field label="Specification value" required maxLength={1000} inputMode={definition.dataType === 'DECIMAL' ? 'decimal' : 'text'} value={value} onChange={e => setValue(e.target.value)} />}
+          : <Field label="Specification value" required maxLength={definition.dataType === 'DECIMAL' ? 22 : 1000} pattern={definition.dataType === 'DECIMAL' ? '-?(?:0|[1-9][0-9]{0,13})(?:\\.[0-9]{1,6})?' : undefined} title={definition.dataType === 'DECIMAL' ? 'Use a dot for decimals, up to 14 integer digits and 6 decimal places; no grouping separators.' : undefined} inputMode={definition.dataType === 'DECIMAL' ? 'decimal' : 'text'} value={value} onChange={e => setValue(e.target.value)} />}
+        {definition.dataType === 'DECIMAL' && <p className="text-xs text-slate-600">Use a dot for decimals, up to 14 integer digits and 6 decimal places. No thousands separators.</p>}
         <p className="text-xs text-slate-600">{definition.dataType} {definition.unitLabel}. {definition.definesStock ? 'This value identifies the goods and is fixed once saved. Use another SKU for different goods.' : 'Descriptive values can be updated with an audit record.'}</p>
       </>}<Button type="submit" disabled={!definition || action.busy}>Save specification</Button></div>
-    </fieldset></form>}
-    <Feedback error={action.error || selected.error || list.error} message={action.message} />
-    {list.loading && <p role="status" className="mt-4 text-sm">Loading specifications…</p>}
+    </fieldset></ProductFormShell>}
+    <Feedback error={action.error} message={action.message} />
+    {selected.error && <ProductLoadState result={selected} label="specification definition" />}
+    <ProductLoadState result={list} label="specifications" />
     {list.data && <><Table columns={['Specification', 'Value', 'Purpose', ...(canManage ? ['Actions'] : [])]} rows={list.data.items} empty="No specifications recorded." render={row => <>
       <Cell>{row.code} — {row.name}{!row.definitionActive && <p className="text-xs">Inactive definition</p>}</Cell><Cell>{typeof row.value === 'boolean' ? row.value ? 'Yes' : 'No' : row.value} {row.unitLabel}</Cell><Cell>{row.definesStock ? 'Stock identity' : 'Descriptive'}</Cell>
       {canManage && <Cell><Button variant="outline" disabled={!row.definitionActive} onClick={() => { setDefinitionId(row.definitionId); setValue(String(row.value)); action.clearFeedback() }} aria-label={`Set ${row.code}`}>Set value</Button></Cell>}
-    </>} /><Pager data={list.data} offset={offset} setOffset={setOffset} /></>}
+    </>} /><ProductPager data={list.data} offset={offset} setOffset={setOffset} /></>}
   </section>
 }

@@ -5,6 +5,9 @@ import { chromium } from 'playwright-core'
 import { checkAccounting } from './accounting-smoke.mjs'
 import { checkProducts } from './products-smoke.mjs'
 import { checkClassification } from './product-classification-smoke.mjs'
+import { checkProductUx } from './product-ux-smoke.mjs'
+import { checkInventory } from './inventory-smoke.mjs'
+import { checkReceipts } from './receipts-smoke.mjs'
 
 const browser = await chromium.launch({
   ...(process.env.BROWSER_PATH
@@ -24,7 +27,7 @@ await mkdir(artifacts, { recursive: true })
 
 function waitForPageContent(title) {
   const name = title === 'Dashboard' ? /Every export starts with/
-    : title === 'Settings' ? 'Workspace connection' : title === 'Accounting' ? 'Chart of accounts' : title === 'Products' ? 'Product catalogue' : `A home for your ${title.toLowerCase()}`
+    : title === 'Settings' ? 'Workspace connection' : title === 'Accounting' ? 'Chart of accounts' : title === 'Products' ? 'Product catalogue' : title === 'Inventory' ? 'Inventory setup' : `A home for your ${title.toLowerCase()}`
   return page.getByRole('heading', { level: 1, name }).waitFor()
 }
 
@@ -70,7 +73,10 @@ try {
   if (process.env.SMOKE_ISOLATED === '1') {
     await checkProducts(page, base, artifacts)
     await checkClassification(page, base, artifacts)
+    await checkProductUx(page, base, artifacts)
     await checkAccounting(page, base, artifacts)
+    await checkInventory(page, base, artifacts)
+    await checkReceipts(page, base, artifacts)
     await page.goto(base)
   }
   await page.getByRole('link', { name: 'Explore products', exact: true }).click()
@@ -170,6 +176,30 @@ try {
     assert.equal(await page.getByRole('dialog').getByRole('link', { name: 'Inventory', exact: true }).count(), 0)
     await page.getByRole('dialog').getByRole('button', { name: 'Sign out', exact: true }).click()
     await page.getByRole('heading', { name: 'Sign in', exact: true }).waitFor()
+  }
+  if (process.env.SMOKE_INVENTORY_READER_EMAIL) {
+    await page.getByLabel('Workspace code').fill(account.tenantCode)
+    await page.getByLabel('Email', { exact: true }).fill(process.env.SMOKE_INVENTORY_READER_EMAIL)
+    await page.getByLabel('Password', { exact: true }).fill(account.password)
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+    await page.getByRole('heading', { name: 'Sign in', exact: true }).waitFor({ state: 'hidden' })
+    await page.goto(`${base}/inventory`)
+    await waitForPageContent('Inventory')
+    await page.getByRole('row').filter({ hasText: 'İstanbul warehouse' }).waitFor()
+    assert.equal(await page.getByRole('button', { name: 'Add warehouse', exact: true }).count(), 0)
+    assert.equal(await page.getByRole('button', { name: 'Edit IST', exact: true }).count(), 0)
+    assert.equal(await page.getByRole('tab', { name: 'Audit trail', exact: true }).count(), 0)
+    await page.getByRole('tab', { name: 'Destination pools', exact: true }).click()
+    await page.getByRole('row').filter({ hasText: 'GENERAL allocation' }).waitFor()
+    assert.equal(await page.getByRole('button', { name: 'Add pool', exact: true }).count(), 0)
+    await page.getByRole('tab', { name: 'Receipts', exact: true }).click()
+    await page.getByRole('button', { name: 'View receipt BROWSER-RECEIPT', exact: true }).click()
+    await page.getByRole('heading', { name: 'Receipt BROWSER-RECEIPT', exact: true }).waitFor()
+    assert.equal(await page.getByRole('button', { name: /Post receipt|Add receipt|Delete receipt/ }).count(), 0)
+    await page.getByRole('button', { name: 'Open navigation' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Sign out', exact: true }).click()
+    await page.getByRole('heading', { name: 'Sign in', exact: true }).waitFor()
+    console.log('PASS: inventory reader can view metadata and receipt provenance with no posting, configuration or audit controls.')
   }
   assert.deepEqual(failures, [])
   console.log('PASS: login errors/success, protected return route, seven routes, request IDs, readiness states, mobile account controls, logout and browser runtime; isolated mode also tests entity switching, scoped editing and viewer access.')

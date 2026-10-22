@@ -2,8 +2,8 @@
 
 Implemented from the **new, user-authorized 21 October 2026 baseline**, not from
 recovered original files. See the [design specification](../design/PR01_PR02_database_specification.md)
-and [SQL reference](../design/PR01_PR02_schema.sql). Only the PR-01A portion is
-implemented; future inventory contracts are identified as planned.
+and [SQL reference](../design/PR01_PR02_schema.sql). PR-01A/01B schema and PR-01C
+product UX are implemented; inventory contracts remain planned.
 
 ## Use
 
@@ -83,6 +83,7 @@ in-use errors, paging without losing selection, audit, reload, mobile and reader
 
 PR-01B [classification](product-classification.md) is implemented in m005 (six
 more tables, 29 total), including typed specifications, GTİP review/history and
-versioned supplier aliases. Next is PR-01C product UX and release checks. Unit
+versioned supplier aliases. PR-01C [product UX and release checks](product-ux.md)
+are implemented; PR-02A warehouse/pool metadata is next. Unit
 conversion and translated-name fields remain deferred until needed. Inventory
 quantities, invoices, VAT attribution and historical imports remain later work.

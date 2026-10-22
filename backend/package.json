@@ -25,7 +25,13 @@
     "test:pr01a": "node scripts/test-pr00.js products",
     "test:pr01a:browser": "node scripts/test-pr00.js browser",
     "test:pr01b": "node scripts/test-pr00.js classification",
-    "test:pr01b:browser": "node scripts/test-pr00.js browser"
+    "test:pr01b:browser": "node scripts/test-pr00.js browser",
+    "test:pr01c": "node scripts/test-pr00.js browser",
+    "test:pr01": "node scripts/test-pr01.js",
+    "test:pr02a": "node scripts/test-pr00.js inventory",
+    "test:pr02a:browser": "node scripts/test-pr00.js browser",
+    "test:pr02b": "node scripts/test-pr00.js receipts",
+    "test:pr02b:browser": "node scripts/test-pr00.js browser"
   },
   "keywords": [],
   "author": "",

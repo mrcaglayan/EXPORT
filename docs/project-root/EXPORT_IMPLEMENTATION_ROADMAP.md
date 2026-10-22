@@ -1,15 +1,15 @@
 # Export Accounting Application — SaaP-Aligned Implementation Roadmap
 
-**Version:** 1.6 — 21 October 2026
+**Version:** 1.9 — 22 October 2026
 **Project:** new, standalone Turkish trading-exporter application  
 **Reference inspected:** uploaded `SaaP-main.zip` (read as reference, NOT executed)  
 **Scope:** multi-tenant / legal entity, product catalogue, same-warehouse virtual destination allocations, immutable inventory/accounting ledgers, purchasing/e-invoice, customs, VAT attribution and refund preparation.
 
-**Progress (21 October 2026):** PR-00AA, PR-00A, PR-00B, PR-00C, PR-01A and PR-01B implemented.
-Next: PR-01C — product UX polish and the combined product release gate.
+**Progress (22 October 2026):** PR-00AA through PR-00C, PR-01A through PR-01C and PR-02A/PR-02B implemented.
+Next: PR-02C — destination allocation and approved pool borrowing.
 The user authorized a new PR-01/02 design baseline; it is clearly labeled as new.
 Journals have no fixed line-count ceiling, use a paged editor and batched writes.
-See `export-accounting/docs/pr-handoffs/PR-01B.md` for actual
+See `docs/pr-handoffs/PR-02B.md` from the repository root for actual
 commands/results and the remaining development dependency audit warning.
 
 ## 0. Ground rules and confirmed decisions
@@ -17,7 +17,7 @@ commands/results and the remaining development dependency audit warning.
 1. The new application uses **the same technology family and code conventions as SaaP**, but is a **separate repository and database**. It is not a copy or extension of the whole SaaP ERP. A future integration adapter can be added when required.
 2. Country-specific goods share the **same physical warehouse** and are earmarked with **virtual country pools**. `GENERAL` + country pools must sum to physical on-hand stock for each warehouse/SKU/source layer.
 3. The Excel workbook `Ortak Malzeme.xlsx` is **background reference only**. Do not load it, reconstruct old purchases/stock balances, seed historical inventory, consolidate its real codes, or allocate historical input VAT. Build **capabilities** for later import and approval, but do not execute any migration until actual data and a cut-off date are supplied.
-4. On 21 October 2026 the user authorized a **new baseline**: `PR01_PR02_database_specification.md` and `PR01_PR02_schema.sql`. Tracked authoritative copies are in `export-accounting/docs/design/`; matching copies sit beside this roadmap. They were written from this roadmap and the existing app, not recovered original inputs. PR-01A/PR-01B DDL is implemented in m004/m005; future PR-02 contracts are explicitly planned and must be refined in their own forward-only migrations. Preserve applied migrations.
+4. On 21 October 2026 the user authorized a **new baseline**: `PR01_PR02_database_specification.md` and `PR01_PR02_schema.sql`. Tracked authoritative copies are in `export-accounting/docs/design/`; matching copies sit beside this roadmap. They were written from this roadmap and the existing app, not recovered original inputs. Baseline v5 includes PR-01A/PR-01B/PR-02A/PR-02B DDL implemented in m004–m007; future PR-02C–02F contracts are explicitly planned and must be refined in their own forward-only migrations. Preserve applied migrations.
 5. No negative stock; no silent country borrowing; no artificial `0.0001` amount for genuinely free-of-charge lines; no VAT refund based only on dispatch or invoice issuance.
 6. Source purchase VAT, inventory cost, VAT attributable to customs-cleared exports, VAT deduction, and the ultimately claimable refund are **separate amounts and ledgers**.
 7. Each merge/PR must leave the app bootable, migrations runnable, and tests passing. No large untested omnibus PR.
@@ -239,16 +239,26 @@ calculate VAT from an account code. Render 25 editor rows per page; validate acc
 
 **Acceptance (verified in PR-01B)**: two different SKUs can share GTİP; one SKU can have GTİP history; supplier alias retains original supplier wording; no automatic GTİP-only merges.
 
-Implemented review states: PENDING → REVIEWED → VERIFIED, with pre-verification REJECTED and verified RETIRED. `products.review` records reason, actor/time and GTİP broker evidence. Inclusive windows cannot overlap; shortening a verified window preserves prior applicability, while retirement withdraws use for all dates. Exact verified supplier/code/description mappings only; replacements retain earlier alias revisions. SKU Details and product reference/review screens are available. PR-01C refines them and assembles the release gate.
+Implemented review states: PENDING → REVIEWED → VERIFIED, with pre-verification REJECTED and verified RETIRED. `products.review` records reason, actor/time and GTİP broker evidence. Inclusive windows cannot overlap; shortening a verified window preserves prior applicability, while retirement withdraws use for all dates. Exact verified supplier/code/description mappings only; replacements retain earlier alias revisions. SKU Details and product reference/review screens are available. PR-01C refines them and provides the combined release gate.
 
 ### PR-01C — Product catalogue UI + release gate
 
 **Build**
 - Family list/tree, SKU list and detail, attribute editor, GTİP history/review, product status, supplier description alias mapping.
-- Search/filter and pagination; reusable modals; English UI with future Turkish translations allowed.
+- Search/filter and pagination; reusable inline forms and feedback; English UI with future Turkish translations allowed.
 - `npm run test:pr01` backend integration tests and frontend smoke/build gate.
 
 **Acceptance**: users can manage product families and SKUs without physical stock; permissions and audit work; no migration performed from the background workbook.
+
+**Implemented (22 October 2026):** URL-backed tabs, list filters/pages and SKU
+details; family/alias-to-SKU drill-down; current detail on Refresh; supplier/SKU
+alias filters and inactive filter choices; advisory duplicate warnings; required
+wording/code/decimal/GTİP date validation; shared read retry and page recovery;
+mobile keyboard tabs. `npm --prefix backend run test:pr01` combines OpenAPI,
+lint/build, journal editor, all foundation/auth/accounting/product/classification
+integration and one browser gate. `test:pr01c` selects that browser gate alone.
+No new migration, endpoint, stock quantity or dependency. See
+`docs/architecture/product-ux.md` and `docs/pr-handoffs/PR-01C.md`.
 
 ### PR-02A — Warehouse and virtual destination pool schema
 
@@ -260,6 +270,17 @@ Implemented review states: PENDING → REVIEWED → VERIFIED, with pre-verificat
 
 **Acceptance**: one physical warehouse with AF, CM and GENERAL pool definitions; creating a pool never creates quantity, value, or a journal.
 
+**Implemented (22 October 2026):** m006 adds four empty tables and ADMIN-only
+configure/audit permissions. Pools are entity-wide definitions, with GENERAL and
+country uniqueness retained when inactive. Warehouse and pool are independent
+dimensions until a stock row references both. Inventory periods link to an OPEN
+accounting period and reuse its dates; separate inventory status reserves later
+closing. Movement effects are fixed metadata. Scoped, audited, idempotent APIs
+and setup tabs cover all four resources. Tests exercise Istanbul + GENERAL/AF/CM,
+SQL country constraints, scope, permissions, concurrent duplicates, rollback and
+browser use. See `docs/architecture/inventory-foundation.md` and
+`docs/pr-handoffs/PR-02A.md`. No quantities, valuation or GL are created.
+
 ### PR-02B — Goods receipt, FIFO source layers and immutable ledger
 
 **Build**
@@ -268,8 +289,21 @@ Implemented review states: PENDING → REVIEWED → VERIFIED, with pre-verificat
 - InnoDB transaction with period lock + relevant stock/layer/pool row locks and deterministic lock order.
 - Strict idempotency and scoped uniqueness; no edit/delete of posted ledger lines. Reversals planned in PR-02F.
 - **Test fixtures only** can simulate supplier receipts until PR-03 purchasing integration exists; do not load legacy workbook.
+- Reuse m006 metadata; validate active references and movement effect, and both
+  inventory/accounting period statuses under transaction locks. Add in-use guards
+  when stock introduces dependencies on warehouse/pool/movement metadata.
 
 **Acceptance**: test receipt of 100 units creates 100 physical units AND 100 across pool allocations, once only under repeated API request; stock valuation matches receipt; concurrent operations never diverge.
+
+**Implemented (22 October 2026):** m007 adds eight tables, SQL immutability and
+receipt reconciliation guards, exact decimal/rounding allocation, source/key retry
+protection and atomic projections. Multiple lines/SKUs and free goods retain
+source identity; 301 lines and concurrent submissions are tested. Both calendars
+and active references are checked under the common entity lock. Receipt, layer,
+balance and ledger read screens are available. Posting accepts synthetic fixtures
+only in disposable schemas; the normal app has no receipt POST route before
+authorized purchasing in PR-03. No local stock or GL/VAT was seeded. See
+docs/architecture/inventory-receipts.md and docs/pr-handoffs/PR-02B.md.
 
 ### PR-02C — Country allocation and controlled borrowing
 
@@ -278,6 +312,7 @@ Implemented review states: PENDING → REVIEWED → VERIFIED, with pre-verificat
 - Priority selection: destination country → GENERAL → another country's pool **only by approved reallocation**.
 - Reallocation posts equal/opposite pool entries for the *same warehouse/SKU/layer*, with **no physical ledger or GL changes**.
 - Maker-checker: requester cannot approve their own other-country borrowing.
+- Extend m007 receipt-only event provenance, signed pool deltas and projection insert guards in a new migration. Preserve immutable history and original receipt allocation reads.
 
 **Acceptance**: reallocating 20 from CM to AF keeps physical = 100 and total value unchanged; CM cannot be borrowed silently; concurrent requests do not overallocate.
 
@@ -345,7 +380,7 @@ one VAT rate; do not infer item identity from the GL account.
 - Return explicit status codes (400/401/403/404/409/422) and `requestId` in errors.
 - List APIs use filters and pagination; no unbounded full-table fetch.
 - For posting/reallocations/close, require `Idempotency-Key` (or explicit request token). Never rely on a browser's disabled button as the integrity control.
-- Example `GET /api/v1/entities/:entityId/products/skus`, `POST /api/v1/entities/:entityId/products/skus`, `GET /api/v1/inventory/on-hand`, `POST /api/v1/inventory/receipts/:id/post`, `POST /api/v1/inventory/pool-reallocations/:id/approve`, `POST /api/v1/inventory/reservations`, `GET /api/v1/inventory/trial-balance`, `POST /api/v1/inventory/periods/:id/close`.
+- Implemented products use `GET/POST /api/v1/entities/:entityId/products/skus`. Planned inventory routes must keep the same explicit entity scope: `GET /api/v1/entities/:entityId/inventory/on-hand`, `POST /api/v1/entities/:entityId/inventory/receipts/:id/post`, `POST /api/v1/entities/:entityId/inventory/pool-reallocations/:id/approve`, `POST /api/v1/entities/:entityId/inventory/reservations`, `GET /api/v1/entities/:entityId/inventory/trial-balance`, `POST /api/v1/entities/:entityId/inventory/periods/:id/close`.
 - Every backend write validates tenant and legal entity scope and permissions; IDs submitted by the browser are treated as untrusted.
 - Include read/write/audit/approve permissions per module; do not grant approval rights implicitly to all inventory operators.
 
@@ -400,4 +435,4 @@ cd frontend && npm run lint && npm run build
 - Accounting-account policy, stock valuation and export VAT rules to receive Turkish SMMM/YMM sign-off before live use.
 - Integration with SaaP's full GL or HR/Payroll is not assumed; write domain adapters so that it remains possible.
 
-**Current sequence:** PR-00AA through PR-00C, PR-01A and PR-01B are complete. The newly authorized design baseline replaces the absent input prerequisite. Next implement PR-01C, followed by PR-02A through PR-02F in order. Continue extending the existing project and refine future baseline contracts as their PRs are implemented.
+**Current sequence:** PR-00AA through PR-00C, PR-01A through PR-01C and PR-02A/PR-02B are complete. The newly authorized design baseline replaces the absent input prerequisite. Next implement PR-02C, followed by PR-02D through PR-02F in order. Continue extending the existing project and refine future baseline contracts as their PRs are implemented.

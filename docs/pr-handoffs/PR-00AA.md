@@ -1,7 +1,7 @@
 # PR-00AA handoff — Project Foundation
 
-**Current status — 21 October 2026:** PR-01B is implemented; see the
-[PR-01B handoff](PR-01B.md). Its newly authorized design baseline resolves the
+**Current status — 22 October 2026:** PR-02B is implemented; see the
+[PR-02B handoff](PR-02B.md). PR-02C is next. Its newly authorized design baseline resolves the
 earlier absent-input prerequisite. Journals now have no fixed line-count ceiling.
 The dated implementation/check results below are historical.
 

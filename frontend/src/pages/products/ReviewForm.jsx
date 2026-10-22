@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Field, Feedback, inputStyle } from '@/pages/accounting/accounting-ui'
 import { useAccountingMutation } from '@/pages/accounting/useAccounting'
+import { ProductFormShell } from './product-ui'
 
 const choices = { PENDING: ['REVIEWED', 'REJECTED'], REVIEWED: ['VERIFIED', 'REJECTED'], VERIFIED: ['RETIRED'] }
 export default function ReviewForm({ base, item, kind, onSaved, onCancel }) {
@@ -10,7 +11,7 @@ export default function ReviewForm({ base, item, kind, onSaved, onCancel }) {
   const set = (key, value) => setForm(current => ({ ...current, [key]: value }))
   const action = useAccountingMutation(base, onSaved)
   const evidence = kind === 'gtip' && form.decision === 'VERIFIED'
-  return <form aria-label="Review record" className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4" onSubmit={async e => {
+  return <ProductFormShell aria-label="Review record" className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4" onSubmit={async e => {
     e.preventDefault()
     const body = { decision: form.decision, reason: form.reason, ...(evidence && { brokerName: form.brokerName, verificationReference: form.verificationReference, verifiedOn: form.verifiedOn }) }
     if (await action.submit(`${kind === 'gtip' ? 'gtip-history' : 'aliases'}/${item.id}/review`, body, 'Review recorded.')) onCancel()
@@ -26,5 +27,5 @@ export default function ReviewForm({ base, item, kind, onSaved, onCancel }) {
     {form.decision === 'RETIRED' && <p className="mt-3 text-xs text-slate-600">Retirement withdraws this entry from automatic use.{kind === 'gtip' && ' It applies to all dates. Use Set end date when a valid classification is changing from a later date.'} The history remains available.</p>}
     <Feedback error={action.error} />
     <div className="mt-4 flex gap-2"><Button type="submit" disabled={action.busy}>Record review</Button><Button variant="outline" disabled={action.busy} onClick={onCancel}>Cancel review</Button></div>
-  </form>
+  </ProductFormShell>
 }

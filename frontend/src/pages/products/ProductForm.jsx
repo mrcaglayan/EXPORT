@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button'
 import { Field, Feedback, inputStyle } from '@/pages/accounting/accounting-ui'
 import { useAccountingMutation } from '@/pages/accounting/useAccounting'
 import ProductPicker from './ProductPicker'
+import { useDebouncedValue, useProducts } from './useProducts'
+import { ProductFormShell } from './product-ui'
 
 const names = { units: 'unit', families: 'family', skus: 'SKU', suppliers: 'supplier', 'attribute-definitions': 'specification definition' }
 export default function ProductForm({ base, resource, revision, initial, onSaved, onCancel }) {
@@ -11,6 +13,9 @@ export default function ProductForm({ base, resource, revision, initial, onSaved
   const action = useAccountingMutation(base, onSaved)
   const set = (key, value) => setForm(current => ({ ...current, [key]: value }))
   const name = names[resource]
+  const code = useDebouncedValue(form.code.trim().toUpperCase())
+  const duplicates = useProducts(base, resource, { q: code, limit: 100 }, revision, !initial && /^[A-Z0-9][A-Z0-9_-]{0,39}$/.test(code))
+  const duplicate = code === form.code.trim().toUpperCase() && duplicates.data?.items.find(item => item.code.toUpperCase() === code)
   async function submit(event) {
     event.preventDefault()
     const body = { name: form.name, ...(initial ? { active: form.active } : { code: form.code }),
@@ -20,10 +25,10 @@ export default function ProductForm({ base, resource, revision, initial, onSaved
     const saved = await action.submit(`${resource}${initial ? `/${initial.id}` : ''}`, body, `${name} saved.`, initial ? 'patch' : 'post')
     if (saved) onCancel()
   }
-  return <form onSubmit={submit} className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+  return <ProductFormShell onSubmit={submit} className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
     <h2 className="font-semibold">{initial ? 'Edit' : 'Add'} {name}</h2>
     <fieldset disabled={action.busy} className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2">
-      <Field label="Code" required maxLength={40} pattern="[A-Za-z0-9][A-Za-z0-9_-]*" value={form.code} disabled={!!initial} onChange={e => set('code', e.target.value)} />
+      <Field label="Code" required maxLength={40} pattern="[A-Za-z0-9][A-Za-z0-9_\-]*" title="Start with a letter or number; use letters, numbers, underscores or hyphens." value={form.code} disabled={!!initial} onChange={e => set('code', e.target.value)} />
       <Field label="Name" required maxLength={160} value={form.name} onChange={e => set('name', e.target.value)} />
       {resource === 'units' && <>
         <Field label="Symbol" required maxLength={16} value={form.symbol} onChange={e => set('symbol', e.target.value)} />
@@ -43,7 +48,8 @@ export default function ProductForm({ base, resource, revision, initial, onSaved
       {initial && <Field label="Status"><select className={inputStyle} value={String(form.active)} onChange={e => set('active', e.target.value === 'true')}><option value="true">Active</option><option value="false">Inactive</option></select></Field>}
     </fieldset>
     <p className="mt-3 text-xs text-slate-500">Codes{resource === 'units' ? ' and quantity precision' : resource === 'skus' ? ' and base units' : resource === 'attribute-definitions' ? ', value type, unit label and stock identity choice' : ''} are fixed after creation.</p>
+    {duplicate && <p role="status" className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Code {duplicate.code} already exists ({duplicate.active ? 'active' : 'inactive'}). Choose another code or edit the existing record.</p>}
     <Feedback error={action.error} />
     <div className="mt-4 flex gap-2"><Button type="submit" disabled={action.busy}>{action.busy ? 'Saving…' : `Save ${name}`}</Button><Button variant="outline" type="button" disabled={action.busy} onClick={onCancel}>Cancel</Button></div>
-  </form>
+  </ProductFormShell>
 }

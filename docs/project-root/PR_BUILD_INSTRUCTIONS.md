@@ -4,9 +4,9 @@ Use this alongside `EXPORT_IMPLEMENTATION_ROADMAP.md` and the **new, user-author
 
 ## Overall coding contract
 
-**Current status:** PR-00AA, PR-00A, PR-00B, PR-00C, PR-01A and PR-01B are implemented.
-Next is PR-01C — product UX polish and the combined product release gate.
-See `export-accounting/docs/pr-handoffs/PR-01B.md`. Earlier task briefs below remain the historical scope
+**Current status (22 October 2026):** PR-00AA through PR-00C, PR-01A through PR-01C and PR-02A/PR-02B are implemented.
+Next is PR-02C — destination allocation and approved pool borrowing.
+See `docs/pr-handoffs/PR-02B.md` from the repository root. Earlier task briefs below remain the historical scope
 definitions; do not recreate or reinstall the existing scaffold.
 
 You are building a **NEW standalone Export Accounting application** using `SaaP-main.zip` only as a technology and coding-style reference. Use Node.js ES modules + Express 5 + `mysql2/promise` + MySQL 8 + React 19 + Vite 7 + Tailwind 4 + shadcn/Radix + React Router 7 + Axios. Keep backend and frontend as separate npm projects. Use camelCase JSON, snake_case DB, `/api/v1`, SaaP-style JavaScript migrations and `schema_migrations`, service/route/validator separation, permission-scoped routes, OpenAPI, and PR-specific test scripts. Use environment-only secrets. NEVER import production data from the historical `Ortak Malzeme.xlsx` reference. A country pool is a virtual allocation in one physical warehouse. Prevent negative stock and duplicate postings transactionally. Do not implement later modules early.
@@ -64,17 +64,45 @@ PR-01B is implemented through m005 and the existing entity-scoped product base. 
 
 Polish product family/SKU/GTİP/alias screens with reusable components. Add filters, pagination, duplicate warnings, ability to drill into specific SKU, form validation, UX and auth checks, smoke tests and PR-01 release gate. No stock quantities or migrations from legacy Excel.
 
+Implemented with persistent product URL state, family/alias SKU drill-down,
+current detail reads, inactive-aware filters, shared inline form validation,
+advisory duplicate warnings, retry/page recovery and mobile keyboard tabs.
+`npm --prefix backend run test:pr01` is the combined gate; `test:pr01c` runs its
+browser flow alone. No new schema or API contract was needed; preserve m001–m005.
+The design baseline v3 and `docs/architecture/product-ux.md` describe the result.
+
 ## PR-02A task brief
 
 Create physical warehouse, virtual GENERAL/COUNTRY pool (ISO country), inventory period and stock movement metadata. Country pools must not create physical warehouse or GL balances. Add scoped keys/FKs and anti-cross-entity protections. Test creating AF/CM/GENERAL pools for one Istanbul warehouse.
+
+Implemented through m006 and `/api/v1/entities/:entityId/inventory`. Pools are
+entity-wide definitions, with one GENERAL and one pool per assigned country,
+including inactive records. Future balances reference warehouse and pool together.
+Inventory periods link to an existing OPEN accounting period, reusing its dates;
+inventory status is separate. Movement effects are fixed metadata only. Preserve
+applied m001–m006. Baseline v4 and `docs/architecture/inventory-foundation.md`
+describe the API, permissions and constraints; `test:pr02a` and
+`test:pr02a:browser` verify them without seeding the local company.
 
 ## PR-02B task brief
 
 Create receipts and receipt source layers, immutable event/physical stock ledger, corresponding virtual pool ledger and transactionally maintained balance projections. Use mysql2 transactions with deterministic row locking, idempotency tokens, and source layer identity. Receipts originate from synthetic test fixtures initially; integrate e-invoice purchase source later in PR-03. Ensure physical sum equals pool sum and valuation reconciles. Include double-submit tests.
 
+Reuse PR-02A metadata and scoped FKs. Validate active warehouse/pool/SKU and the
+appropriate active movement effect. Check both inventory and accounting period
+status within the posting transaction. Add deactivation/in-use guards as stock
+dependencies are introduced. Pools do not own physical quantities; projections
+are keyed by warehouse as well as pool. Refine the v4 baseline in a new migration.
+
+Implemented through m007. Preserve m001–m007. The fixture-only receipt executor
+and read screens are described in docs/architecture/inventory-receipts.md; baseline
+v5 includes all tables/triggers. Use test:pr02b, test:pr02a and the prior regression
+gate; test:pr02b:browser includes the shared browser workflow. The local company
+remains empty of stock. Real purchase-source posting is still PR-03.
+
 ## PR-02C task brief
 
-Build country-first/general-second selection, approved borrowing request and execution for another destination pool, and maker-checker restrictions. Reallocations post equal/opposite pool ledger lines only (no physical stock change and no GL entry). Test cross-country approval, partial borrowing, unavailable balances and concurrent requests.
+Build country-first/general-second selection, approved borrowing request and execution for another destination pool, and maker-checker restrictions. Reallocations post equal/opposite pool ledger lines only (no physical stock change and no GL entry). Test cross-country approval, partial borrowing, unavailable balances and concurrent requests. Extend m007 receipt-only event provenance and pool insert/projection guards in a forward migration; preserve receipt reconciliation and original allocations.
 
 ## PR-02D task brief
 

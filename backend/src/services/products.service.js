@@ -4,6 +4,7 @@ import { AppError } from '../shared/AppError.js';
 import { entityId } from '../validators/auth.validators.js';
 import { product, filters } from '../validators/products.validators.js';
 import { scopeArgs, authorize, entityWrite, audit, notFound } from './entity-context.js';
+import { assertInventoryUnused } from './inventory-usage.js';
 
 const resources = {
   units: { table: 'unit_of_measure', fields: 'symbol, quantity_precision AS quantityPrecision' },
@@ -56,6 +57,7 @@ export async function list(context, kind, input) {
 }
 const conflict = (code, message) => new AppError(409, code, message);
 async function validateLinks(tx, context, kind, item, id) {
+  if (!item.active && kind === 'skus') await assertInventoryUnused(tx, context, kind, id);
   if (kind === 'families') {
     let parentId = item.parentId;
     const seen = new Set([id]);

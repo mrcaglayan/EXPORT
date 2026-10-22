@@ -1,4 +1,4 @@
-# PR-01 / PR-02 design baseline — version 2
+# PR-01 / PR-02 design baseline — version 5
 
 Created **21 October 2026 (Europe/Istanbul)** with the user's explicit instruction
 to write a new baseline and proceed with PR-01A. This is a new design derived
@@ -6,14 +6,14 @@ from the implementation roadmap and existing PR-00 application. The originally
 referenced documents were not supplied or recovered. This document does not
 claim that future inventory features have been implemented.
 
-The tracked files in `docs/design/` are authoritative. Matching copies beside
-the parent roadmap allow its original filenames to resolve. Update both copies
-when revising this baseline. The companion SQL contains implemented PR-01A/PR-01B table definitions
+The tracked files in `docs/design/` are authoritative. Matching copies in
+`docs/project-root/` beside the roadmap allow its original filenames to resolve. Update both copies
+when revising this baseline. The companion SQL contains implemented PR-01A/PR-01B/PR-02A/PR-02B definitions
 and clearly marked future contracts. Runtime schema changes use registered,
 forward-only JavaScript migrations; do not execute the reference SQL against
 an existing database.
 
-Revised **21 October 2026** for completed PR-01B. PR-01C is next; inventory remains planned.
+Revised **22 October 2026** for PR-02B receipt layers and stock ledgers. PR-02C controlled pool reallocation is next. Real purchase sources remain PR-03.
 
 ## Scope and shared contracts
 
@@ -24,7 +24,8 @@ Revised **21 October 2026** for completed PR-01B. PR-01C is next; inventory rema
   reservations, immutable movements, reconciled closing and corrections.
 - Existing m001/m002/m003 and existing accounting records remain unchanged.
   PR-01A introduces `m004_product_foundation`; PR-01B introduces
-  `m005_product_classification`. Later features get new migrations.
+  `m005_product_classification`. PR-02A adds `m006_inventory_foundation`.
+  PR-02B adds `m007_inventory_receipts`. Later features get new migrations; applied m001–m007 remain unchanged.
 - UUID IDs use `CHAR(36)`. Every domain table carries `tenant_id` and
   `legal_entity_id`. Scoped unique keys and composite foreign keys prevent a
   relationship to another tenant/entity, even when a caller knows its UUID.
@@ -160,19 +161,100 @@ other roles are not elevated. No legacy data or real classification codes are
 seeded. Details are now available on each SKU; product audit stays isolated
 from accounting audit access.
 
-## PR-01C next (not implemented as a separate release gate)
+## PR-01C product UX and release gate (implemented)
 
-Polish catalogue/specification/GTİP/alias navigation and filters, drilldowns,
-validation and permission UX; compose the full product release gate from the
-PR-01A/01B tests and add focused missing UX checks. No stock quantities or legacy
-imports. Existing PR-01A/01B features should be extended, not recreated.
+Product tabs, catalogue/alias filters, paging and SKU details use persistent URL
+state. Family and alias rows drill into SKUs; reload/Back preserve the view and
+Refresh reads current detail. Alias supplier/SKU filters include inactive
+references. Shared forms, load/retry states and paging recovery improve the
+existing screens. Duplicate warnings are advisory; scoped server uniqueness is
+authoritative. Whitespace-only required fields, code/decimal formats and GTİP
+date order are checked before submission without altering original supplier text.
 
-## PR-02 target schema contracts (planned, not applied)
+`npm --prefix backend run test:pr01` combines OpenAPI, frontend lint/build,
+journal editor regressions, foundation/auth/accounting/product/classification
+integration and the browser workflow, including focused UX and permission checks.
+It uses disposable test schemas only. No new migration, endpoint, stock quantity
+or legacy import is added. See `docs/architecture/product-ux.md` for the contract.
+
+## PR-02A inventory metadata (implemented)
+
+m006 adds four empty domain tables, bringing the schema to 33. It grants
+`inventory.configure` and `inventory.audit.read` to existing ADMIN roles only;
+the existing `inventory.read` remains the read boundary.
+
+| Table | Columns and constraints |
+|---|---|
+| warehouses | Scoped id/code, name, location, active; owning entity FK |
+| inventory_pools | Scoped id/code, name, GENERAL/COUNTRY kind, nullable ISO country code, active; code is GENERAL or country; at most one GENERAL and one pool per country/entity, including inactive rows; SQL CHECK validates assigned countries and kind/code consistency |
+| inventory_periods | Scoped id, accounting_period_id, OPEN/IN_REVIEW/CLOSED status; scoped FK and unique accounting-period link; dates/code read from accounting calendar |
+| inventory_movement_types | Scoped id/code, name, fixed RECEIPT/ISSUE/REALLOCATION/ADJUSTMENT_IN/ADJUSTMENT_OUT/REVALUATION effect, active |
+
+Pools are entity-wide allocation definitions. A future stock row references
+warehouse AND pool; AF, CM and GENERAL share the same physical warehouse rather
+than creating extra warehouse or GL identities. Only user-created metadata is
+stored; there are no seeded company warehouses, pools, movements or quantities.
+
+Inventory period creation requires an open accounting period and uses its dates
+without duplication. Inventory status starts OPEN. Accounting status is shown
+separately, and later stock posting must check both calendars under transaction
+locks. Inventory closure/reopening/approval remains PR-02E; no such endpoint is
+exposed in PR-02A. Movement effects classify future behavior but cannot execute it.
+
+Reads/writes are under `/api/v1/entities/:entityId/inventory`, including paged
+warehouses, pools, periods, movement-types, inventory-only audit and scoped calendar
+choices, plus a fixed country reference. Codes, pool identity, period links and
+movement effects cannot be changed through the API. Name/location/active updates
+are audited and idempotent. No DELETE route exists. See
+`docs/architecture/inventory-foundation.md` for the exact contracts and country
+snapshot maintenance policy. PR-02B adds active/in-use stock guards; reservation guards remain future work.
+
+## PR-02B receipts and stock ledgers (implemented)
+
+m007 adds eight tables, bringing the schema to 41. The new inventory.receipt.post
+permission is granted only to ADMIN. Stock reads use inventory.read; audit retains
+its separate permission. All APIs retain entity scope and the shared write guards.
+
+| Table | Grain and invariants |
+|---|---|
+| stock_receipts | Scoped unique source-kind/source-ID; fingerprint, dates, warehouse, period, movement, base currency, total; ASSEMBLING → POSTED only |
+| stock_receipt_lines | Receipt/source-line key and line number unique; SKU, quantity, cost, description and exact rounded value; immutable |
+| inventory_layers | One immutable source layer per receipt line; warehouse/SKU, original quantity/cost/value, receipt date and stable FIFO order |
+| inventory_events | One immutable RECEIPT event per receipt |
+| inventory_physical_ledger | Immutable event/layer entry with composite layer/warehouse/SKU FK |
+| inventory_pool_ledger | Immutable event/layer/pool entry; scoped pool/layer identity |
+| inventory_balances | Nonnegative current physical quantity/value per warehouse/SKU/layer |
+| inventory_pool_balances | Nonnegative current allocation per warehouse/SKU/layer/pool, linked to the physical projection |
+
+Posting is fixture-only in disposable test schemas until PR-03 adds authorized
+purchase sources. The normal app exposes paged receipt/layer/ledger/balance reads
+and source drill-down. No real stock, purchase invoice, GL or VAT is seeded.
+
+Each line retains a distinct source identity, including repeated SKUs. Positive
+quantities respect base-unit precision; unit cost may be zero. Exact decimal line
+value rounds half-up to six places. Largest-remainder allocation of that rounded
+value ensures pool totals equal physical quantity/value. No fixed line-count cap;
+1 MiB payload guard, batched references/inserts and paged reads remain bounded.
+
+Entity → period/reference → deterministic layer/projection row locks protect
+posting, closing and deactivation. Both inventory/accounting periods must be open;
+references active and movement effect RECEIPT. Scoped source uniqueness and retry
+fingerprints prevent duplicate posting. Header/lines/layers/ledgers/projections,
+audit and retry response commit together; database triggers verify conservation
+at posting and reject history edits, deletion and late additions. Warehouses,
+pools and SKUs with stock cannot be deactivated; posted movement references are
+also guarded. No GL-posted or VAT-deducted state is implied.
+
+FIFO source ordering is received date, creation time and layer UUID; consuming
+stock is deferred to PR-02D. PR-02C must extend receipt-only event provenance and
+positive pool-movement constraints in a new forward migration for approved
+equal/opposite pool movements. See docs/architecture/inventory-receipts.md for
+the exact API, rounding, locking, fixture boundary and future migration contracts.
+
+## PR-02C–02F target schema contracts (planned, not applied)
 
 | Stage | Planned records | Grain and invariants |
 |---|---|---|
-| 02A | `warehouses`, `inventory_pools`, `inventory_periods`, movement metadata | Scoped physical warehouse; GENERAL or COUNTRY pool with ISO country identity; scoped dates/status; no extra physical warehouse or GL balance for a country pool |
-| 02B | receipts/items, receipt source layers, inventory events, physical/pool ledgers and balance projections | SKU/warehouse/source-layer identity; immutable posted event/lines; receipt quantity and valuation preserved; idempotent source posting |
 | 02C | pool reallocation request/review/execution | Same warehouse/SKU/layer; equal/opposite pool deltas; requester cannot approve own other-country borrowing; physical and GL unchanged |
 | 02D | reservations and reservation layer allocations, dispatch/source links | Available quantity at warehouse/SKU/layer/pool; FIFO, deterministic locks, no over-reservation or duplicate consumption |
 | 02E | close requests, versioned snapshots, reconciliation checkpoints | Entity/period/version, SKU/warehouse/layer/pool balances; approved prior close plus in-period movements; locked periods and controlled reopen |

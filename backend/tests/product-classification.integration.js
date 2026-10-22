@@ -25,7 +25,7 @@ test('PR-01B specifications, reviewed GTIP and exact versioned aliases', { timeo
   const f = await createFixtures();
   const { rows: before } = await query('SELECT * FROM schema_migrations ORDER BY migration_key');
   await runMigrations(); await runMigrations();
-  const { rows: after } = await query("SELECT * FROM schema_migrations WHERE migration_key <> 'm005_product_classification' ORDER BY migration_key");
+  const { rows: after } = await query(`SELECT * FROM schema_migrations WHERE migration_key IN (${before.map(() => '?').join(',')}) ORDER BY migration_key`, before.map(row => row.migration_key));
   assert.deepEqual(after, before);
   const ctx = (entityId = f.alpha.entityId, userId = f.alpha.userId, tenantId = f.alpha.tenantId) => ({ identity: { tenantId, userId }, entityId, idempotencyKey: randomUUID(), requestId: 'pr01b-test' });
   const beta = () => ctx(f.beta.entityId, f.beta.userId, f.beta.tenantId);

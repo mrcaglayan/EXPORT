@@ -39,7 +39,7 @@ test('isolated MySQL foundation integration', { timeout: 30000 }, async t => {
     assert.equal(rerun[0].attempts, 1);
     assert.equal((await checkReadiness()).status, 'ready');
     const [tables] = await pool.query('SHOW TABLES');
-    assert.equal(tables.length, 29);
+    assert.equal(tables.length, 41);
   });
 
   await t.test('real transaction commit and rollback preserve data and release connections', async () => {

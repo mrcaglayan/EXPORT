@@ -2,7 +2,8 @@
 
 Implemented 21 October 2026. This extends the new PR-01/02 baseline and existing
 catalogue. There are no real classification, supplier or stock records seeded.
-The next step is PR-01C product UX and the combined product release gate.
+PR-01C [product UX and the combined release gate](product-ux.md) are implemented.
+PR-02A warehouse/pool metadata is next.
 
 ## Specifications and stock identity
 
@@ -141,6 +142,6 @@ controls follow the permission and current state. The supplier match form expose
 positive/negative exact matches; refresh/edit hides stale match results. Tables
 scroll on mobile; navigation stays in the sidebar without a global header.
 
-PR-01C will refine these screens, add further catalogue navigation/filter UX and
-assemble the product release gate. Inventory, invoice import, automatic tax
-calculations and legacy workbook data remain outside PR-01B.
+PR-01C adds persistent views, family/alias SKU drill-down, supplier/SKU filters,
+shared validation and the product release gate. Inventory, invoice import,
+automatic tax calculations and legacy workbook data remain outside PR-01.
