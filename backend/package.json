@@ -5,6 +5,10 @@
   "description": "Export Accounting API foundation",
   "main": "src/index.js",
   "scripts": {
+    "test:pr02d": "node scripts/test-pr00.js reservations",
+    "test:pr02d:browser": "node scripts/test-pr00.js browser",
+    "test:pr02c": "node scripts/test-pr00.js reallocations",
+    "test:pr02c:browser": "node scripts/test-pr00.js browser",
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "test": "node --test tests/bootstrap.test.js tests/foundation.test.js tests/money.test.js",

@@ -135,10 +135,13 @@ disposable schemas. The normal `frontend test:smoke` does no business writes.
 
 ## Next boundaries
 
-PR-02C adds approved pool reallocations without physical/GL changes. Its forward
-migration must extend event provenance beyond receipt-only events, allow signed
-pool movements and update insert guards/projection creation rules for that event
-type while retaining receipt checks. Do not disable immutability protections.
-PR-02D adds reservation/dispatch/FIFO consumption; PR-02E adds closing snapshots
-and GL reconciliation; PR-02F adds reversals/adjustments and the comprehensive gate.
-Preserve m001–m007 once applied and keep baseline/OpenAPI copies synchronized.
+PR-02C is implemented by m008: approved pool reallocations extend event provenance,
+allow signed pool movements and update insert guards/projection creation rules
+while retaining receipt checks. The original receipt allocations remain unchanged.
+See [controlled borrowing](inventory-reallocations.md) for the current contract.
+PR-02D is implemented by m009: [reservations and dispatch](inventory-reservations.md)
+add outstanding-stock protection, signed physical/pool consumption and retained
+source lineage. Current balances expose reserved and available quantities.
+PR-02E next adds closing snapshots and explicit GL comparison; PR-02F adds
+reversals/adjustments and the comprehensive gate. Preserve applied m001–m009 and
+keep baseline/OpenAPI copies synchronized.

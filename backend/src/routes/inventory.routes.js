@@ -3,6 +3,8 @@ import { authConfiguration, requireAuth, csrfProtection } from '../middleware/au
 import { entityId } from '../validators/auth.validators.js';
 import * as inventory from '../services/inventory-foundation.service.js';
 import * as receipts from '../services/inventory-receipts.service.js';
+import * as reallocations from '../services/inventory-reallocations.service.js';
+import * as reservations from '../services/inventory-reservations.service.js';
 
 export function inventoryRoutes() {
   const router = Router({ mergeParams: true });
@@ -11,6 +13,27 @@ export function inventoryRoutes() {
     next();
   });
   const respond = fn => async (req, res) => res.json({ ...await fn(req), requestId: req.requestId });
+  router.get('/reservations', respond(req => reservations.listReservations(req.inventory, req.query)));
+  router.post('/reservations', csrfProtection, respond(req => reservations.reserve(req.inventory, req.body)));
+  router.get('/reservations/:id', respond(req => reservations.getReservation(req.inventory, req.params.id)));
+  router.get('/reservations/:id/lines', respond(req => reservations.reservationLines(req.inventory, req.params.id, req.query)));
+  router.get('/reservations/:id/allocations', respond(req => reservations.reservationAllocations(req.inventory, req.params.id, req.query)));
+  router.get('/reservations/:id/releases', respond(req => reservations.releases(req.inventory, req.params.id, req.query)));
+  router.post('/reservations/:id/release', csrfProtection, respond(req => reservations.release(req.inventory, req.params.id, req.body)));
+  router.post('/reservations/:id/cancel', csrfProtection, respond(req => reservations.release(req.inventory, req.params.id, req.body, true)));
+  router.post('/reservations/:id/issues', csrfProtection, respond(req => reservations.postIssue(req.inventory, req.params.id, req.body)));
+  router.get('/reservation-releases/:id/lines', respond(req => reservations.releaseLines(req.inventory, req.params.id, req.query)));
+  router.get('/issues', respond(req => reservations.listIssues(req.inventory, req.query)));
+  router.get('/issues/:id', respond(req => reservations.getIssue(req.inventory, req.params.id)));
+  router.get('/issues/:id/lines', respond(req => reservations.issueLines(req.inventory, req.params.id, req.query)));
+  router.get('/allocation-preview', respond(req => reallocations.preview(req.inventory, req.query)));
+  router.get('/skus', respond(req => reallocations.skus(req.inventory, req.query)));
+  router.get('/skus/:id', respond(req => reallocations.skus(req.inventory, req.query, req.params.id)));
+  router.get('/reallocations', respond(req => reallocations.list(req.inventory, req.query)));
+  router.post('/reallocations', csrfProtection, respond(req => reallocations.create(req.inventory, req.body)));
+  router.get('/reallocations/:id', respond(req => reallocations.get(req.inventory, req.params.id)));
+  router.get('/reallocations/:id/lines', respond(req => reallocations.lines(req.inventory, req.params.id, req.query)));
+  for (const action of ['approve', 'reject', 'execute', 'cancel']) router.post(`/reallocations/:id/${action}`, csrfProtection, respond(req => reallocations.act(req.inventory, req.params.id, action, req.body)));
   for (const kind of ['receipts', 'layers', 'physical-ledger', 'pool-ledger', 'balances', 'pool-balances']) router.get(`/${kind}`, respond(req => receipts.list(req.inventory, kind, req.query)));
   router.get('/receipts/:id', respond(req => receipts.getReceipt(req.inventory, req.params.id)));
   router.get('/receipts/:id/lines', respond(req => receipts.receiptLines(req.inventory, req.params.id, req.query)));

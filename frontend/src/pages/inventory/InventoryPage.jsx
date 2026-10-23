@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/auth/auth-context'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import InventoryPanel from './InventoryPanel'
 import StockPanel from './StockPanel'
+import AllocationPanel from './AllocationPanel'
+const ReservationPanel = lazy(() => import('./ReservationPanel'))
+const IssuesPanel = lazy(() => import('./ReservationPanel').then(module => ({ default: module.IssuesPanel })))
 
 const stockTabs = [['receipts', 'Receipts'], ['balances', 'Stock balances'], ['pool-balances', 'Pool balances'], ['layers', 'Source layers'], ['physical-ledger', 'Physical ledger'], ['pool-ledger', 'Pool ledger']]
 
@@ -14,7 +17,7 @@ export default function InventoryPage() {
   const [revision, setRevision] = useState(0)
   const tabList = useRef(null)
   const refresh = useCallback(() => setRevision(value => value + 1), [])
-  const tabs = [['warehouses', 'Warehouses'], ['pools', 'Destination pools'], ['periods', 'Inventory periods'], ['movement-types', 'Movement types'], ...stockTabs, ...(can('inventory.audit.read') ? [['audit-events', 'Audit trail']] : [])]
+  const tabs = [['warehouses', 'Warehouses'], ['pools', 'Destination pools'], ['periods', 'Inventory periods'], ['movement-types', 'Movement types'], ['reallocations', 'Allocation & borrowing'], ['reservations', 'Reservations'], ['issues', 'Dispatches'], ...stockTabs, ...(can('inventory.audit.read') ? [['audit-events', 'Audit trail']] : [])]
   useEffect(() => {
     const element = tabList.current
     const showSelected = () => {
@@ -39,7 +42,9 @@ export default function InventoryPage() {
         }} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm ${tab === key ? 'bg-[#142e35] text-white' : 'text-slate-600 hover:bg-slate-100'}`}>{label}</button>)}
     </div>
     <div role="tabpanel" id="inventory-panel" aria-labelledby={`inventory-tab-${tab}`}>
-      {stockTabs.some(([key]) => key === tab) ? <StockPanel key={tab} base={base} resource={tab} revision={revision} /> : <InventoryPanel key={tab} base={base} resource={tab} revision={revision} onSaved={refresh} canConfigure={can('inventory.configure')} />}
+      <Suspense fallback={<p role="status" className="mt-6 text-sm">Loading inventory view…</p>}>
+      {tab === 'reservations' ? <ReservationPanel base={base} revision={revision} onSaved={refresh} /> : tab === 'issues' ? <IssuesPanel base={base} revision={revision} /> : tab === 'reallocations' ? <AllocationPanel base={base} revision={revision} onSaved={refresh} /> : stockTabs.some(([key]) => key === tab) ? <StockPanel key={tab} base={base} resource={tab} revision={revision} /> : <InventoryPanel key={tab} base={base} resource={tab} revision={revision} onSaved={refresh} canConfigure={can('inventory.configure')} />}
+      </Suspense>
     </div>
   </Card>
 }

@@ -17,6 +17,13 @@ function validateRegistry(migrations) {
       || typeof migration.up !== 'function' || typeof migration.verify !== 'function')) {
     throw new MigrationError('MIGRATION_REGISTRY_INVALID', 'Migration keys must be unique, ordered, and have a checksum, up() and verify().');
   }
+  for (const [index, migration] of migrations.entries()) {
+    const replaced = migration.replacesVerificationFor ?? [];
+    if (!Array.isArray(replaced) || new Set(replaced).size !== replaced.length
+      || replaced.some(key => !keys.slice(0, index).includes(key))) {
+      throw new MigrationError('MIGRATION_REGISTRY_INVALID', 'Verification replacements must name unique earlier migrations.');
+    }
+  }
 }
 
 export function migrationLockName(database) {
@@ -117,7 +124,13 @@ export async function runMigrations({
     for (const migration of migrations) {
       const state = states.find(item => item.key === migration.key);
       if (state.status === 'applied') {
-        await migration.verify(connection);
+        // A forward extension owns verification of the complete evolved schema.
+        // Pending extensions never suppress the original check. Reviewed retries
+        // may already contain partial DDL and must use the successor's verifier.
+        const replaced = migrations.some(next => next.replacesVerificationFor?.includes(migration.key)
+          && states.some(item => item.key === next.key && (item.status === 'applied'
+            || (item.key === retryKey && ['failed', 'running'].includes(item.status)))));
+        if (!replaced) await migration.verify(connection);
         continue;
       }
       if (state.status === 'pending') {

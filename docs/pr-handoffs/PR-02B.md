@@ -1,5 +1,9 @@
 # PR-02B handoff — Receipts, source layers and stock ledgers
 
+**Current status — 23 October 2026:** PR-02D is implemented; see the
+[PR-02D handoff](PR-02D.md). PR-02E is next. The dated results below describe
+the earlier PR-02B delivery.
+
 Completed **22 October 2026 (Europe/Istanbul)**. Next is **PR-02C: destination
 allocation and approved pool borrowing**.
 

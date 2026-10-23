@@ -1,7 +1,7 @@
--- NEW design baseline v5, revised 22 October 2026 for PR-02B receipt layers and stock ledgers.
+-- NEW design baseline v7, revised 23 October 2026 for PR-02D reservations and FIFO dispatch.
 -- Original referenced inputs were not supplied. User-authorized replacement.
 -- REFERENCE ONLY: m004_product_foundation.js, m005_product_classification.js and
--- m006_inventory_foundation.js, m007_inventory_receipts.js are executable migrations. Requires m001/m002/m003.
+-- m006_inventory_foundation.js, m007_inventory_receipts.js and m008_inventory_reallocations.js and m009_inventory_reservations_issues.js are executable migrations. Requires m001/m002/m003.
 -- Do not run this reference against an existing schema. No inserts/imports.
 
 CREATE TABLE unit_of_measure (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL,
@@ -144,8 +144,7 @@ CREATE TABLE product_aliases (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(3
 ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- PR-01C implemented: product UI polish and combined release gate; no new tables.
--- PR-02C–02F contracts remain planned, NOT executable DDL here:
--- 02C approved equal/opposite pool reallocations, no physical/GL change.
+-- PR-02D–02F contracts remain planned, NOT executable DDL here:
 -- 02D reservations/dispatch, exact SKU and source-layer consumption.
 -- 02E versioned close snapshots and GL reconciliation checkpoints.
 -- 02F reversals/adjustments with original-event lineage.
@@ -204,7 +203,8 @@ CREATE TABLE inventory_movement_types (
     FOREIGN KEY (tenant_id, legal_entity_id) REFERENCES legal_entities(tenant_id, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- PR-02B implemented in m007_inventory_receipts. Reference only; no seed data.
+-- PR-02B/PR-02C/PR-02D evolved schema verified by m009_inventory_reservations_issues.
+-- Reference only; no seed data. Applied m001–m009 remain immutable.
 
 CREATE TABLE stock_receipts (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL,
     source_kind ENUM('TEST_FIXTURE') NOT NULL,
@@ -222,8 +222,7 @@ CREATE TABLE stock_receipts (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36
     CONSTRAINT receipt_value CHECK (total_value >= 0),
     FOREIGN KEY (tenant_id, legal_entity_id) REFERENCES legal_entities(tenant_id, id),
     FOREIGN KEY (tenant_id, legal_entity_id, period_id) REFERENCES inventory_periods(tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, warehouse_id) REFERENCES warehouses(tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, movement_type_id) REFERENCES inventory_movement_types(tenant_id, legal_entity_id, id),
-    FOREIGN KEY (tenant_id, created_by) REFERENCES users(tenant_id, id))
-ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+    FOREIGN KEY (tenant_id, created_by) REFERENCES users(tenant_id, id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE stock_receipt_lines (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL,
     receipt_id CHAR(36) NOT NULL, line_number INT UNSIGNED NOT NULL,
@@ -235,8 +234,7 @@ CREATE TABLE stock_receipt_lines (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CH
     UNIQUE KEY receipt_line_number (tenant_id, legal_entity_id, receipt_id, line_number),
     UNIQUE KEY receipt_line_source (tenant_id, legal_entity_id, receipt_id, source_line_key),
     CONSTRAINT receipt_line_amount CHECK (quantity > 0 AND unit_cost >= 0 AND value = ROUND(quantity * unit_cost, 6)),
-    FOREIGN KEY (tenant_id, legal_entity_id, receipt_id) REFERENCES stock_receipts(tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, sku_id) REFERENCES product_skus(tenant_id, legal_entity_id, id))
-ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+    FOREIGN KEY (tenant_id, legal_entity_id, receipt_id) REFERENCES stock_receipts(tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, sku_id) REFERENCES product_skus(tenant_id, legal_entity_id, id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE inventory_layers (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL,
     receipt_line_id CHAR(36) NOT NULL, warehouse_id CHAR(36) NOT NULL, sku_id CHAR(36) NOT NULL,
@@ -247,25 +245,136 @@ CREATE TABLE inventory_layers (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(
     UNIQUE KEY layer_source (tenant_id, legal_entity_id, receipt_line_id),
     KEY layer_fifo (tenant_id, legal_entity_id, warehouse_id, sku_id, received_date, created_at, id),
     CONSTRAINT layer_amount CHECK (quantity > 0 AND unit_cost >= 0 AND value = ROUND(quantity * unit_cost, 6)),
-    FOREIGN KEY (tenant_id, legal_entity_id, receipt_line_id, sku_id) REFERENCES stock_receipt_lines(tenant_id, legal_entity_id, id, sku_id), FOREIGN KEY (tenant_id, legal_entity_id, warehouse_id) REFERENCES warehouses(tenant_id, legal_entity_id, id))
-ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+    FOREIGN KEY (tenant_id, legal_entity_id, receipt_line_id, sku_id) REFERENCES stock_receipt_lines(tenant_id, legal_entity_id, id, sku_id), FOREIGN KEY (tenant_id, legal_entity_id, warehouse_id) REFERENCES warehouses(tenant_id, legal_entity_id, id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE inventory_balances (tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL, warehouse_id CHAR(36) NOT NULL, sku_id CHAR(36) NOT NULL, layer_id CHAR(36) NOT NULL,
+    quantity DECIMAL(20,6) NOT NULL, value DECIMAL(20,6) NOT NULL,
+    PRIMARY KEY (tenant_id, legal_entity_id, warehouse_id, sku_id, layer_id),
+    CONSTRAINT physical_balance_nonnegative CHECK (quantity >= 0 AND value >= 0), FOREIGN KEY (tenant_id, legal_entity_id, layer_id, warehouse_id, sku_id) REFERENCES inventory_layers(tenant_id, legal_entity_id, id, warehouse_id, sku_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE inventory_pool_balances (tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL, warehouse_id CHAR(36) NOT NULL, sku_id CHAR(36) NOT NULL, layer_id CHAR(36) NOT NULL, pool_id CHAR(36) NOT NULL,
+    quantity DECIMAL(20,6) NOT NULL, value DECIMAL(20,6) NOT NULL,
+    PRIMARY KEY (tenant_id, legal_entity_id, warehouse_id, sku_id, layer_id, pool_id),
+    CONSTRAINT pool_balance_nonnegative CHECK (quantity >= 0 AND value >= 0),
+    FOREIGN KEY (tenant_id, legal_entity_id, warehouse_id, sku_id, layer_id) REFERENCES inventory_balances(tenant_id, legal_entity_id, warehouse_id, sku_id, layer_id), FOREIGN KEY (tenant_id, legal_entity_id, pool_id) REFERENCES inventory_pools(tenant_id, legal_entity_id, id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE inventory_reallocations (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL,
+  reference VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  warehouse_id CHAR(36) NOT NULL, sku_id CHAR(36) NOT NULL,
+  from_pool_id CHAR(36) NOT NULL, to_pool_id CHAR(36) NOT NULL,
+  quantity DECIMAL(20,6) NOT NULL, posting_date DATE NOT NULL,
+  period_id CHAR(36) NOT NULL, movement_type_id CHAR(36) NOT NULL, reason VARCHAR(255) NOT NULL,
+  requires_independent BOOLEAN NOT NULL,
+  status ENUM('DRAFT','REQUESTED','APPROVED','REJECTED','CANCELLED','EXECUTING','EXECUTED') NOT NULL DEFAULT 'DRAFT',
+  requested_by CHAR(36) NOT NULL, requested_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  reviewed_by CHAR(36) NULL, reviewed_at TIMESTAMP NULL, review_reason VARCHAR(255) NULL,
+  cancelled_at TIMESTAMP NULL, cancel_reason VARCHAR(255) NULL,
+  executed_by CHAR(36) NULL, executed_at TIMESTAMP NULL, total_value DECIMAL(20,6) NULL,
+  UNIQUE KEY reallocation_scope (tenant_id, legal_entity_id, id),
+  UNIQUE KEY reallocation_reference (tenant_id, legal_entity_id, reference),
+  KEY reallocation_status (tenant_id, legal_entity_id, status, requested_at, id),
+  CONSTRAINT reallocation_amount CHECK (quantity > 0 AND (total_value IS NULL OR total_value >= 0)),
+  CONSTRAINT reallocation_pools CHECK (from_pool_id <> to_pool_id),
+  FOREIGN KEY (tenant_id, legal_entity_id, warehouse_id) REFERENCES warehouses(tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, sku_id) REFERENCES product_skus(tenant_id, legal_entity_id, id),
+  FOREIGN KEY (tenant_id, legal_entity_id, from_pool_id) REFERENCES inventory_pools(tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, to_pool_id) REFERENCES inventory_pools(tenant_id, legal_entity_id, id),
+  FOREIGN KEY (tenant_id, legal_entity_id, period_id) REFERENCES inventory_periods(tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, movement_type_id) REFERENCES inventory_movement_types(tenant_id, legal_entity_id, id),
+  FOREIGN KEY (tenant_id, requested_by) REFERENCES users(tenant_id, id),
+  FOREIGN KEY (tenant_id, reviewed_by) REFERENCES users(tenant_id, id),
+  FOREIGN KEY (tenant_id, executed_by) REFERENCES users(tenant_id, id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE inventory_reallocation_lines (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL,
+  request_id CHAR(36) NOT NULL, line_number INT UNSIGNED NOT NULL, warehouse_id CHAR(36) NOT NULL, sku_id CHAR(36) NOT NULL, layer_id CHAR(36) NOT NULL,
+  quantity DECIMAL(20,6) NOT NULL, value DECIMAL(20,6) NULL,
+  UNIQUE KEY reallocation_line_scope (tenant_id, legal_entity_id, id),
+  UNIQUE KEY reallocation_line_number (tenant_id, legal_entity_id, request_id, line_number),
+  UNIQUE KEY reallocation_line_layer (tenant_id, legal_entity_id, request_id, layer_id),
+  CONSTRAINT reallocation_line_amount CHECK (quantity > 0 AND (value IS NULL OR value >= 0)),
+  FOREIGN KEY (tenant_id, legal_entity_id, request_id) REFERENCES inventory_reallocations(tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, layer_id, warehouse_id, sku_id) REFERENCES inventory_layers(tenant_id, legal_entity_id, id, warehouse_id, sku_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE inventory_reservations (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL,
+  reference VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  warehouse_id CHAR(36) NOT NULL, destination_pool_id CHAR(36) NOT NULL,
+  reservation_date DATE NOT NULL, period_id CHAR(36) NOT NULL, reason VARCHAR(255) NOT NULL,
+  status ENUM('ASSEMBLING','ACTIVE','CLOSED','CANCELLED') NOT NULL DEFAULT 'ASSEMBLING',
+  created_by CHAR(36) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY reservation_scope (tenant_id, legal_entity_id, id), UNIQUE KEY reservation_reference (tenant_id, legal_entity_id, reference),
+  KEY reservation_status (tenant_id, legal_entity_id, status, created_at, id),
+  FOREIGN KEY (tenant_id, legal_entity_id, warehouse_id) REFERENCES warehouses(tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, destination_pool_id) REFERENCES inventory_pools(tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, period_id) REFERENCES inventory_periods(tenant_id, legal_entity_id, id),
+  FOREIGN KEY (tenant_id, created_by) REFERENCES users(tenant_id, id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE inventory_reservation_lines (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL,
+  reservation_id CHAR(36) NOT NULL, line_number INT UNSIGNED NOT NULL, sku_id CHAR(36) NOT NULL,
+  quantity DECIMAL(20,6) NOT NULL,
+  UNIQUE KEY reservation_line_scope (tenant_id, legal_entity_id, id), UNIQUE KEY reservation_line_number (tenant_id, legal_entity_id, reservation_id, line_number),
+  UNIQUE KEY reservation_line_grain (tenant_id, legal_entity_id, id, reservation_id, sku_id),
+  CONSTRAINT reservation_line_amount CHECK (quantity > 0),
+  FOREIGN KEY (tenant_id, legal_entity_id, reservation_id) REFERENCES inventory_reservations(tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, sku_id) REFERENCES product_skus(tenant_id, legal_entity_id, id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE inventory_reservation_allocations (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL,
+  reservation_id CHAR(36) NOT NULL, reservation_line_id CHAR(36) NOT NULL, allocation_number INT UNSIGNED NOT NULL,
+  warehouse_id CHAR(36) NOT NULL, sku_id CHAR(36) NOT NULL, layer_id CHAR(36) NOT NULL, pool_id CHAR(36) NOT NULL, quantity DECIMAL(20,6) NOT NULL,
+  released_quantity DECIMAL(20,6) NOT NULL DEFAULT 0, issued_quantity DECIMAL(20,6) NOT NULL DEFAULT 0,
+  UNIQUE KEY reservation_allocation_scope (tenant_id, legal_entity_id, id),
+  UNIQUE KEY reservation_allocation_number (tenant_id, legal_entity_id, reservation_id, allocation_number),
+  UNIQUE KEY reservation_allocation_source (tenant_id, legal_entity_id, reservation_line_id, layer_id, pool_id),
+  UNIQUE KEY reservation_allocation_grain (tenant_id, legal_entity_id, id, reservation_id, warehouse_id, sku_id, layer_id, pool_id),
+  KEY reservation_stock (tenant_id, legal_entity_id, warehouse_id, sku_id, layer_id, pool_id),
+  CONSTRAINT reservation_allocation_amount CHECK (quantity > 0 AND released_quantity >= 0 AND issued_quantity >= 0 AND released_quantity + issued_quantity <= quantity),
+  FOREIGN KEY (tenant_id, legal_entity_id, reservation_line_id, reservation_id, sku_id) REFERENCES inventory_reservation_lines(tenant_id, legal_entity_id, id, reservation_id, sku_id),
+  FOREIGN KEY (tenant_id, legal_entity_id, warehouse_id, sku_id, layer_id, pool_id) REFERENCES inventory_pool_balances(tenant_id, legal_entity_id, warehouse_id, sku_id, layer_id, pool_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE inventory_reservation_releases (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL, reservation_id CHAR(36) NOT NULL,
+  kind ENUM('RELEASE','CANCEL') NOT NULL, reason VARCHAR(255) NOT NULL,
+  status ENUM('ASSEMBLING','POSTED') NOT NULL DEFAULT 'ASSEMBLING',
+  created_by CHAR(36) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY reservation_release_scope (tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, reservation_id) REFERENCES inventory_reservations(tenant_id, legal_entity_id, id),
+  FOREIGN KEY (tenant_id, created_by) REFERENCES users(tenant_id, id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE inventory_reservation_release_lines (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL, release_id CHAR(36) NOT NULL,
+  allocation_id CHAR(36) NOT NULL, quantity DECIMAL(20,6) NOT NULL,
+  UNIQUE KEY reservation_release_line_scope (tenant_id, legal_entity_id, id), UNIQUE KEY release_allocation (tenant_id, legal_entity_id, release_id, allocation_id),
+  CONSTRAINT release_line_amount CHECK (quantity > 0), FOREIGN KEY (tenant_id, legal_entity_id, release_id) REFERENCES inventory_reservation_releases(tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, allocation_id) REFERENCES inventory_reservation_allocations(tenant_id, legal_entity_id, id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE inventory_issues (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL, reservation_id CHAR(36) NOT NULL,
+  reference VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  payload_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  dispatch_date DATE NOT NULL, posting_date DATE NOT NULL, period_id CHAR(36) NOT NULL,
+  movement_type_id CHAR(36) NOT NULL, description VARCHAR(255) NOT NULL, currency CHAR(3) NOT NULL,
+  total_value DECIMAL(20,6) NOT NULL, status ENUM('ASSEMBLING','POSTED') NOT NULL DEFAULT 'ASSEMBLING',
+  created_by CHAR(36) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY issue_scope (tenant_id, legal_entity_id, id), UNIQUE KEY issue_reference (tenant_id, legal_entity_id, reference),
+  KEY issue_date (tenant_id, legal_entity_id, posting_date, id),
+  CONSTRAINT issue_value CHECK (total_value >= 0), FOREIGN KEY (tenant_id, legal_entity_id, reservation_id) REFERENCES inventory_reservations(tenant_id, legal_entity_id, id),
+  FOREIGN KEY (tenant_id, legal_entity_id, period_id) REFERENCES inventory_periods(tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, movement_type_id) REFERENCES inventory_movement_types(tenant_id, legal_entity_id, id),
+  FOREIGN KEY (tenant_id, created_by) REFERENCES users(tenant_id, id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE inventory_issue_lines (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL, issue_id CHAR(36) NOT NULL,
+  allocation_id CHAR(36) NOT NULL, reservation_id CHAR(36) NOT NULL, line_number INT UNSIGNED NOT NULL,
+  warehouse_id CHAR(36) NOT NULL, sku_id CHAR(36) NOT NULL, layer_id CHAR(36) NOT NULL, pool_id CHAR(36) NOT NULL, quantity DECIMAL(20,6) NOT NULL, value DECIMAL(20,6) NOT NULL,
+  UNIQUE KEY issue_line_scope (tenant_id, legal_entity_id, id), UNIQUE KEY issue_line_number (tenant_id, legal_entity_id, issue_id, line_number),
+  UNIQUE KEY issue_allocation (tenant_id, legal_entity_id, issue_id, allocation_id),
+  CONSTRAINT issue_line_amount CHECK (quantity > 0 AND value >= 0), FOREIGN KEY (tenant_id, legal_entity_id, issue_id) REFERENCES inventory_issues(tenant_id, legal_entity_id, id),
+  FOREIGN KEY (tenant_id, legal_entity_id, allocation_id, reservation_id, warehouse_id, sku_id, layer_id, pool_id) REFERENCES inventory_reservation_allocations(tenant_id, legal_entity_id, id, reservation_id, warehouse_id, sku_id, layer_id, pool_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE inventory_events (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL,
-    receipt_id CHAR(36) NOT NULL, kind ENUM('RECEIPT') NOT NULL,
+    receipt_id CHAR(36) NULL, kind ENUM('RECEIPT','REALLOCATION','ISSUE') NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY event_scope (tenant_id, legal_entity_id, id),
     UNIQUE KEY event_receipt (tenant_id, legal_entity_id, receipt_id),
-    FOREIGN KEY (tenant_id, legal_entity_id, receipt_id) REFERENCES stock_receipts(tenant_id, legal_entity_id, id))
-ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+    FOREIGN KEY (tenant_id, legal_entity_id, receipt_id) REFERENCES stock_receipts(tenant_id, legal_entity_id, id), reallocation_id CHAR(36) NULL,
+    UNIQUE KEY event_reallocation (tenant_id, legal_entity_id, reallocation_id),
+    FOREIGN KEY (tenant_id, legal_entity_id, reallocation_id) REFERENCES inventory_reallocations(tenant_id, legal_entity_id, id), issue_id CHAR(36) NULL, UNIQUE KEY event_issue (tenant_id, legal_entity_id, issue_id), FOREIGN KEY (tenant_id, legal_entity_id, issue_id) REFERENCES inventory_issues(tenant_id, legal_entity_id, id),
+    CONSTRAINT event_source CHECK ((kind = 'RECEIPT' AND receipt_id IS NOT NULL AND reallocation_id IS NULL AND issue_id IS NULL)
+      OR (kind = 'REALLOCATION' AND receipt_id IS NULL AND reallocation_id IS NOT NULL AND issue_id IS NULL)
+      OR (kind = 'ISSUE' AND receipt_id IS NULL AND reallocation_id IS NULL AND issue_id IS NOT NULL))) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE inventory_physical_ledger (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL, warehouse_id CHAR(36) NOT NULL, sku_id CHAR(36) NOT NULL, layer_id CHAR(36) NOT NULL,
     event_id CHAR(36) NOT NULL, quantity DECIMAL(20,6) NOT NULL, value DECIMAL(20,6) NOT NULL,
     UNIQUE KEY physical_entry_scope (tenant_id, legal_entity_id, id),
     UNIQUE KEY physical_event_layer (tenant_id, legal_entity_id, event_id, layer_id),
     KEY physical_layer (tenant_id, legal_entity_id, warehouse_id, sku_id, layer_id),
-    CONSTRAINT physical_receipt_amount CHECK (quantity > 0 AND value >= 0),
-    FOREIGN KEY (tenant_id, legal_entity_id, layer_id, warehouse_id, sku_id) REFERENCES inventory_layers(tenant_id, legal_entity_id, id, warehouse_id, sku_id), FOREIGN KEY (tenant_id, legal_entity_id, event_id) REFERENCES inventory_events(tenant_id, legal_entity_id, id))
-ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+    CONSTRAINT physical_signed_amount CHECK ((quantity > 0 AND value >= 0) OR (quantity < 0 AND value <= 0)),
+    FOREIGN KEY (tenant_id, legal_entity_id, layer_id, warehouse_id, sku_id) REFERENCES inventory_layers(tenant_id, legal_entity_id, id, warehouse_id, sku_id), FOREIGN KEY (tenant_id, legal_entity_id, event_id) REFERENCES inventory_events(tenant_id, legal_entity_id, id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE inventory_pool_ledger (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL, warehouse_id CHAR(36) NOT NULL, sku_id CHAR(36) NOT NULL, layer_id CHAR(36) NOT NULL,
     event_id CHAR(36) NOT NULL, pool_id CHAR(36) NOT NULL,
@@ -273,25 +382,11 @@ CREATE TABLE inventory_pool_ledger (id CHAR(36) NOT NULL PRIMARY KEY, tenant_id 
     UNIQUE KEY pool_entry_scope (tenant_id, legal_entity_id, id),
     UNIQUE KEY pool_event_layer (tenant_id, legal_entity_id, event_id, layer_id, pool_id),
     KEY pool_layer (tenant_id, legal_entity_id, warehouse_id, sku_id, layer_id, pool_id),
-    CONSTRAINT pool_receipt_amount CHECK (quantity > 0 AND value >= 0),
-    FOREIGN KEY (tenant_id, legal_entity_id, layer_id, warehouse_id, sku_id) REFERENCES inventory_layers(tenant_id, legal_entity_id, id, warehouse_id, sku_id), FOREIGN KEY (tenant_id, legal_entity_id, event_id) REFERENCES inventory_events(tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, pool_id) REFERENCES inventory_pools(tenant_id, legal_entity_id, id))
-ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+    CONSTRAINT pool_signed_amount CHECK ((quantity > 0 AND value >= 0) OR (quantity < 0 AND value <= 0)),
+    FOREIGN KEY (tenant_id, legal_entity_id, layer_id, warehouse_id, sku_id) REFERENCES inventory_layers(tenant_id, legal_entity_id, id, warehouse_id, sku_id), FOREIGN KEY (tenant_id, legal_entity_id, event_id) REFERENCES inventory_events(tenant_id, legal_entity_id, id), FOREIGN KEY (tenant_id, legal_entity_id, pool_id) REFERENCES inventory_pools(tenant_id, legal_entity_id, id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE inventory_balances (tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL, warehouse_id CHAR(36) NOT NULL, sku_id CHAR(36) NOT NULL, layer_id CHAR(36) NOT NULL,
-    quantity DECIMAL(20,6) NOT NULL, value DECIMAL(20,6) NOT NULL,
-    PRIMARY KEY (tenant_id, legal_entity_id, warehouse_id, sku_id, layer_id),
-    CONSTRAINT physical_balance_nonnegative CHECK (quantity >= 0 AND value >= 0), FOREIGN KEY (tenant_id, legal_entity_id, layer_id, warehouse_id, sku_id) REFERENCES inventory_layers(tenant_id, legal_entity_id, id, warehouse_id, sku_id))
-ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-CREATE TABLE inventory_pool_balances (tenant_id CHAR(36) NOT NULL, legal_entity_id CHAR(36) NOT NULL, warehouse_id CHAR(36) NOT NULL, sku_id CHAR(36) NOT NULL, layer_id CHAR(36) NOT NULL, pool_id CHAR(36) NOT NULL,
-    quantity DECIMAL(20,6) NOT NULL, value DECIMAL(20,6) NOT NULL,
-    PRIMARY KEY (tenant_id, legal_entity_id, warehouse_id, sku_id, layer_id, pool_id),
-    CONSTRAINT pool_balance_nonnegative CHECK (quantity >= 0 AND value >= 0),
-    FOREIGN KEY (tenant_id, legal_entity_id, warehouse_id, sku_id, layer_id) REFERENCES inventory_balances(tenant_id, legal_entity_id, warehouse_id, sku_id, layer_id), FOREIGN KEY (tenant_id, legal_entity_id, pool_id) REFERENCES inventory_pools(tenant_id, legal_entity_id, id))
-ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- Immutability and receipt reconciliation guards; runtime migration verifies these bodies.
 DELIMITER $$
+
 CREATE TRIGGER receipt_insert_guard BEFORE INSERT ON stock_receipts FOR EACH ROW BEGIN IF NEW.status <> 'ASSEMBLING' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Receipt must be assembled before posting'; END IF; END$$
 
 CREATE TRIGGER receipt_post_guard BEFORE UPDATE ON stock_receipts FOR EACH ROW BEGIN
@@ -330,7 +425,12 @@ CREATE TRIGGER receipt_no_delete BEFORE DELETE ON stock_receipts FOR EACH ROW BE
 
 CREATE TRIGGER stock_receipt_lines_insert_guard BEFORE INSERT ON stock_receipt_lines FOR EACH ROW BEGIN IF NOT EXISTS (SELECT 1 FROM stock_receipts r WHERE r.tenant_id = NEW.tenant_id AND r.legal_entity_id = NEW.legal_entity_id AND r.id = NEW.receipt_id AND r.status = 'ASSEMBLING') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Receipt is not assembling'; END IF; END$$
 
-CREATE TRIGGER inventory_events_insert_guard BEFORE INSERT ON inventory_events FOR EACH ROW BEGIN IF NOT EXISTS (SELECT 1 FROM stock_receipts r WHERE r.tenant_id = NEW.tenant_id AND r.legal_entity_id = NEW.legal_entity_id AND r.id = NEW.receipt_id AND r.status = 'ASSEMBLING') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Receipt is not assembling'; END IF; END$$
+CREATE TRIGGER inventory_events_insert_guard BEFORE INSERT ON inventory_events FOR EACH ROW BEGIN
+   IF NEW.kind = 'ISSUE' THEN IF NOT EXISTS (SELECT 1 FROM inventory_issues i WHERE i.tenant_id = NEW.tenant_id AND i.legal_entity_id = NEW.legal_entity_id AND i.id = NEW.issue_id AND i.status = 'ASSEMBLING') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Issue event requires an assembling issue'; END IF;
+   ELSE BEGIN
+    IF NOT ((NEW.kind = 'RECEIPT' AND NEW.reallocation_id IS NULL AND EXISTS (SELECT 1 FROM stock_receipts r WHERE r.tenant_id = NEW.tenant_id AND r.legal_entity_id = NEW.legal_entity_id AND r.id = NEW.receipt_id AND r.status = 'ASSEMBLING'))
+      OR (NEW.kind = 'REALLOCATION' AND NEW.receipt_id IS NULL AND EXISTS (SELECT 1 FROM inventory_reallocations r WHERE r.tenant_id = NEW.tenant_id AND r.legal_entity_id = NEW.legal_entity_id AND r.id = NEW.reallocation_id AND r.status = 'EXECUTING')))
+    THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Event requires an assembling receipt or executing reallocation'; END IF; END; END IF; END$$
 
 CREATE TRIGGER layer_insert_guard BEFORE INSERT ON inventory_layers FOR EACH ROW BEGIN
     IF NOT EXISTS (SELECT 1 FROM stock_receipt_lines l JOIN stock_receipts r ON r.tenant_id = l.tenant_id AND r.legal_entity_id = l.legal_entity_id AND r.id = l.receipt_id
@@ -338,18 +438,37 @@ CREATE TRIGGER layer_insert_guard BEFORE INSERT ON inventory_layers FOR EACH ROW
   END$$
 
 CREATE TRIGGER inventory_physical_ledger_insert_guard BEFORE INSERT ON inventory_physical_ledger FOR EACH ROW BEGIN
+   IF EXISTS (SELECT 1 FROM inventory_events e WHERE e.tenant_id = NEW.tenant_id AND e.legal_entity_id = NEW.legal_entity_id AND e.id = NEW.event_id AND e.kind = 'ISSUE') THEN
+    IF NOT EXISTS (SELECT 1 FROM inventory_events e JOIN inventory_issues i ON i.tenant_id = e.tenant_id AND i.legal_entity_id = e.legal_entity_id AND i.id = e.issue_id
+      WHERE e.tenant_id = NEW.tenant_id AND e.legal_entity_id = NEW.legal_entity_id AND e.id = NEW.event_id AND i.status = 'ASSEMBLING'
+      AND NEW.quantity = -(SELECT SUM(l.quantity) FROM inventory_issue_lines l WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.warehouse_id = NEW.warehouse_id AND l.sku_id = NEW.sku_id AND l.layer_id = NEW.layer_id AND l.issue_id = i.id)
+      AND NEW.value = -(SELECT SUM(l.value) FROM inventory_issue_lines l WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.warehouse_id = NEW.warehouse_id AND l.sku_id = NEW.sku_id AND l.layer_id = NEW.layer_id AND l.issue_id = i.id))
+    THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Issue ledger must match exact consumption lines'; END IF;
+   ELSE BEGIN
     IF NOT EXISTS (SELECT 1 FROM inventory_events e JOIN stock_receipts r ON r.tenant_id = e.tenant_id AND r.legal_entity_id = e.legal_entity_id AND r.id = e.receipt_id
       JOIN stock_receipt_lines l ON l.tenant_id = r.tenant_id AND l.legal_entity_id = r.legal_entity_id AND l.receipt_id = r.id
       JOIN inventory_layers x ON x.tenant_id = l.tenant_id AND x.legal_entity_id = l.legal_entity_id AND x.receipt_line_id = l.id
       WHERE e.tenant_id = NEW.tenant_id AND e.legal_entity_id = NEW.legal_entity_id AND e.id = NEW.event_id AND x.id = NEW.layer_id AND r.status = 'ASSEMBLING') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Ledger event must match an assembling source layer'; END IF;
-  END$$
+  END; END IF; END$$
 
 CREATE TRIGGER inventory_pool_ledger_insert_guard BEFORE INSERT ON inventory_pool_ledger FOR EACH ROW BEGIN
-    IF NOT EXISTS (SELECT 1 FROM inventory_events e JOIN stock_receipts r ON r.tenant_id = e.tenant_id AND r.legal_entity_id = e.legal_entity_id AND r.id = e.receipt_id
+   IF EXISTS (SELECT 1 FROM inventory_events e WHERE e.tenant_id = NEW.tenant_id AND e.legal_entity_id = NEW.legal_entity_id AND e.id = NEW.event_id AND e.kind = 'ISSUE') THEN
+    IF NOT EXISTS (SELECT 1 FROM inventory_events e JOIN inventory_issues i ON i.tenant_id = e.tenant_id AND i.legal_entity_id = e.legal_entity_id AND i.id = e.issue_id
+      WHERE e.tenant_id = NEW.tenant_id AND e.legal_entity_id = NEW.legal_entity_id AND e.id = NEW.event_id AND i.status = 'ASSEMBLING'
+      AND NEW.quantity = -(SELECT SUM(l.quantity) FROM inventory_issue_lines l WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.warehouse_id = NEW.warehouse_id AND l.sku_id = NEW.sku_id AND l.layer_id = NEW.layer_id AND l.pool_id = NEW.pool_id AND l.issue_id = i.id)
+      AND NEW.value = -(SELECT SUM(l.value) FROM inventory_issue_lines l WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.warehouse_id = NEW.warehouse_id AND l.sku_id = NEW.sku_id AND l.layer_id = NEW.layer_id AND l.pool_id = NEW.pool_id AND l.issue_id = i.id))
+    THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Issue ledger must match exact consumption lines'; END IF;
+   ELSE BEGIN
+    IF NOT ((NEW.quantity > 0 AND NEW.value >= 0 AND EXISTS (SELECT 1 FROM inventory_events e JOIN stock_receipts r ON r.tenant_id = e.tenant_id AND r.legal_entity_id = e.legal_entity_id AND r.id = e.receipt_id
       JOIN stock_receipt_lines l ON l.tenant_id = r.tenant_id AND l.legal_entity_id = r.legal_entity_id AND l.receipt_id = r.id
       JOIN inventory_layers x ON x.tenant_id = l.tenant_id AND x.legal_entity_id = l.legal_entity_id AND x.receipt_line_id = l.id
-      WHERE e.tenant_id = NEW.tenant_id AND e.legal_entity_id = NEW.legal_entity_id AND e.id = NEW.event_id AND x.id = NEW.layer_id AND r.status = 'ASSEMBLING') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Ledger event must match an assembling source layer'; END IF;
-  END$$
+      WHERE e.tenant_id = NEW.tenant_id AND e.legal_entity_id = NEW.legal_entity_id AND e.id = NEW.event_id AND x.id = NEW.layer_id AND r.status = 'ASSEMBLING'))
+      OR EXISTS (SELECT 1 FROM inventory_reallocation_lines l JOIN inventory_reallocations r
+  ON r.tenant_id = l.tenant_id AND r.legal_entity_id = l.legal_entity_id AND r.id = l.request_id
+  WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.layer_id = NEW.layer_id AND l.warehouse_id = NEW.warehouse_id AND l.sku_id = NEW.sku_id AND r.status = 'EXECUTING' AND l.value IS NOT NULL AND EXISTS (SELECT 1 FROM inventory_events e WHERE e.tenant_id = NEW.tenant_id AND e.legal_entity_id = NEW.legal_entity_id AND e.id = NEW.event_id AND e.reallocation_id = r.id)
+        AND ((NEW.pool_id = r.from_pool_id AND NEW.quantity = -l.quantity AND NEW.value = -l.value)
+          OR (NEW.pool_id = r.to_pool_id AND NEW.quantity = l.quantity AND NEW.value = l.value))))
+    THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Pool entry must match its source event and approved layer'; END IF; END; END IF; END$$
 
 CREATE TRIGGER stock_receipt_lines_no_update BEFORE UPDATE ON stock_receipt_lines FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Inventory history is immutable'; END$$
 
@@ -393,9 +512,166 @@ CREATE TRIGGER inventory_balances_insert_guard BEFORE INSERT ON inventory_balanc
   END$$
 
 CREATE TRIGGER inventory_pool_balances_insert_guard BEFORE INSERT ON inventory_pool_balances FOR EACH ROW BEGIN
-    IF NOT EXISTS (SELECT 1 FROM inventory_pool_ledger p JOIN inventory_events e ON e.tenant_id = p.tenant_id AND e.legal_entity_id = p.legal_entity_id AND e.id = p.event_id
+    IF NOT (EXISTS (SELECT 1 FROM inventory_pool_ledger p JOIN inventory_events e ON e.tenant_id = p.tenant_id AND e.legal_entity_id = p.legal_entity_id AND e.id = p.event_id
       JOIN stock_receipts r ON r.tenant_id = e.tenant_id AND r.legal_entity_id = e.legal_entity_id AND r.id = e.receipt_id
       WHERE p.tenant_id = NEW.tenant_id AND p.legal_entity_id = NEW.legal_entity_id AND p.warehouse_id = NEW.warehouse_id AND p.sku_id = NEW.sku_id AND p.layer_id = NEW.layer_id AND p.pool_id = NEW.pool_id
-        AND p.quantity = NEW.quantity AND p.value = NEW.value AND r.status = 'ASSEMBLING') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Projection requires its assembling receipt ledger'; END IF;
+        AND p.quantity = NEW.quantity AND p.value = NEW.value AND r.status = 'ASSEMBLING') OR (NEW.quantity = 0 AND NEW.value = 0 AND EXISTS (SELECT 1 FROM inventory_reallocation_lines l JOIN inventory_reallocations r
+  ON r.tenant_id = l.tenant_id AND r.legal_entity_id = l.legal_entity_id AND r.id = l.request_id
+  WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.layer_id = NEW.layer_id AND l.warehouse_id = NEW.warehouse_id AND l.sku_id = NEW.sku_id AND r.status = 'EXECUTING' AND r.to_pool_id = NEW.pool_id)))
+    THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Pool projection requires a receipt or executing target layer'; END IF; END$$
+
+CREATE TRIGGER reallocation_insert_guard BEFORE INSERT ON inventory_reallocations FOR EACH ROW BEGIN
+    IF NEW.status <> 'DRAFT' OR NEW.reviewed_by IS NOT NULL OR NEW.reviewed_at IS NOT NULL OR NEW.review_reason IS NOT NULL
+      OR NEW.executed_by IS NOT NULL OR NEW.executed_at IS NOT NULL OR NEW.total_value IS NOT NULL OR NEW.cancelled_at IS NOT NULL OR NEW.cancel_reason IS NOT NULL
+      OR NOT EXISTS (SELECT 1 FROM inventory_pools p WHERE p.tenant_id = NEW.tenant_id AND p.legal_entity_id = NEW.legal_entity_id AND p.id = NEW.from_pool_id AND NEW.requires_independent = (p.kind = 'COUNTRY'))
+      OR NOT EXISTS (SELECT 1 FROM inventory_pools p WHERE p.tenant_id = NEW.tenant_id AND p.legal_entity_id = NEW.legal_entity_id AND p.id = NEW.to_pool_id AND p.kind = 'COUNTRY')
+    THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Reallocation must start as a country allocation draft'; END IF; END$$
+
+CREATE TRIGGER reallocation_transition BEFORE UPDATE ON inventory_reallocations FOR EACH ROW BEGIN
+    IF NOT (NEW.id <=> OLD.id) OR NOT (NEW.tenant_id <=> OLD.tenant_id) OR NOT (NEW.legal_entity_id <=> OLD.legal_entity_id) OR NOT (NEW.reference <=> OLD.reference) OR NOT (NEW.warehouse_id <=> OLD.warehouse_id) OR NOT (NEW.sku_id <=> OLD.sku_id) OR NOT (NEW.from_pool_id <=> OLD.from_pool_id) OR NOT (NEW.to_pool_id <=> OLD.to_pool_id) OR NOT (NEW.quantity <=> OLD.quantity) OR NOT (NEW.posting_date <=> OLD.posting_date) OR NOT (NEW.period_id <=> OLD.period_id) OR NOT (NEW.movement_type_id <=> OLD.movement_type_id) OR NOT (NEW.reason <=> OLD.reason) OR NOT (NEW.requires_independent <=> OLD.requires_independent) OR NOT (NEW.requested_by <=> OLD.requested_by) OR NOT (NEW.requested_at <=> OLD.requested_at) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Reallocation plan is immutable'; END IF;
+    IF NOT ((OLD.status = 'DRAFT' AND NEW.status = 'REQUESTED')
+      OR (OLD.status = 'REQUESTED' AND NEW.status IN ('APPROVED','REJECTED','CANCELLED'))
+      OR (OLD.status = 'APPROVED' AND NEW.status IN ('EXECUTING','CANCELLED'))
+      OR (OLD.status = 'EXECUTING' AND NEW.status = 'EXECUTED')) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid reallocation transition'; END IF;
+    IF OLD.status = 'REQUESTED' AND NEW.status IN ('APPROVED','REJECTED') THEN
+      IF NEW.reviewed_by IS NULL OR NEW.reviewed_at IS NULL OR COALESCE(CHAR_LENGTH(TRIM(NEW.review_reason)),0) = 0
+        OR (NEW.requires_independent = 1 AND NEW.reviewed_by = NEW.requested_by) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Country borrowing requires an independent reviewer'; END IF;
+    ELSEIF NOT (NEW.reviewed_by <=> OLD.reviewed_by) OR NOT (NEW.reviewed_at <=> OLD.reviewed_at) OR NOT (NEW.review_reason <=> OLD.review_reason) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Review is immutable'; END IF;
+    IF NEW.status = 'CANCELLED' THEN
+      IF NEW.cancelled_at IS NULL OR COALESCE(CHAR_LENGTH(TRIM(NEW.cancel_reason)),0) = 0 THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cancellation needs a reason'; END IF;
+    ELSEIF NOT (NEW.cancelled_at <=> OLD.cancelled_at) OR NOT (NEW.cancel_reason <=> OLD.cancel_reason) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cancellation is immutable'; END IF;
+    IF NEW.status = 'EXECUTED' THEN
+      IF NEW.executed_by IS NULL OR NEW.executed_at IS NULL OR NEW.total_value IS NULL THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Execution needs actor and value'; END IF;
+    ELSEIF NOT (NEW.executed_by <=> OLD.executed_by) OR NOT (NEW.executed_at <=> OLD.executed_at) OR NOT (NEW.total_value <=> OLD.total_value) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Execution fields are immutable'; END IF;
+    IF NEW.status IN ('REQUESTED','APPROVED','EXECUTING','EXECUTED') THEN
+      IF NOT EXISTS (SELECT 1 FROM inventory_periods i JOIN accounting_periods a ON a.tenant_id = i.tenant_id AND a.legal_entity_id = i.legal_entity_id AND a.id = i.accounting_period_id
+        WHERE i.tenant_id = NEW.tenant_id AND i.legal_entity_id = NEW.legal_entity_id AND i.id = NEW.period_id AND i.status = 'OPEN' AND a.status = 'OPEN' AND NEW.posting_date BETWEEN a.start_date AND a.end_date)
+      THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Inventory and accounting periods must be open'; END IF;
+      IF NEW.quantity <> COALESCE((SELECT SUM(l.quantity) FROM inventory_reallocation_lines l WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.request_id = NEW.id),0)
+      THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Requested quantity must match planned layers'; END IF;
+    END IF;
+    IF NEW.status = 'EXECUTED' THEN
+      IF NOT EXISTS (SELECT 1 FROM inventory_events e WHERE e.tenant_id = NEW.tenant_id AND e.legal_entity_id = NEW.legal_entity_id AND e.reallocation_id = NEW.id)
+        OR NEW.total_value <> (SELECT SUM(l.value) FROM inventory_reallocation_lines l WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.request_id = NEW.id)
+        OR EXISTS (SELECT 1 FROM inventory_physical_ledger p JOIN inventory_events e ON e.tenant_id = p.tenant_id AND e.legal_entity_id = p.legal_entity_id AND e.id = p.event_id WHERE e.tenant_id = NEW.tenant_id AND e.legal_entity_id = NEW.legal_entity_id AND e.reallocation_id = NEW.id)
+      THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Reallocation must preserve physical stock'; END IF;
+      IF EXISTS (SELECT 1 FROM inventory_reallocation_lines l WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.request_id = NEW.id
+        AND (l.value IS NULL OR 2 <> (SELECT COUNT(*) FROM inventory_pool_ledger p JOIN inventory_events e ON e.tenant_id = p.tenant_id AND e.legal_entity_id = p.legal_entity_id AND e.id = p.event_id
+          WHERE p.tenant_id = l.tenant_id AND p.legal_entity_id = l.legal_entity_id AND p.layer_id = l.layer_id AND e.reallocation_id = NEW.id)))
+      THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Every layer requires equal and opposite pool entries'; END IF;
+      IF EXISTS (SELECT 1 FROM inventory_reallocation_lines l JOIN inventory_pool_balances b ON b.tenant_id = l.tenant_id AND b.legal_entity_id = l.legal_entity_id AND b.layer_id = l.layer_id
+        WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.request_id = NEW.id AND b.pool_id IN (NEW.from_pool_id, NEW.to_pool_id)
+        AND (b.quantity <> COALESCE((SELECT SUM(p.quantity) FROM inventory_pool_ledger p WHERE p.tenant_id = b.tenant_id AND p.legal_entity_id = b.legal_entity_id AND p.layer_id = b.layer_id AND p.pool_id = b.pool_id),0)
+          OR b.value <> COALESCE((SELECT SUM(p.value) FROM inventory_pool_ledger p WHERE p.tenant_id = b.tenant_id AND p.legal_entity_id = b.legal_entity_id AND p.layer_id = b.layer_id AND p.pool_id = b.pool_id),0)))
+      THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Pool projections must reconcile to the ledger'; END IF;
+      IF EXISTS (SELECT 1 FROM inventory_reallocation_lines l WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.request_id = NEW.id
+        AND (2 <> (SELECT COUNT(*) FROM inventory_pool_balances b WHERE b.tenant_id = l.tenant_id AND b.legal_entity_id = l.legal_entity_id AND b.layer_id = l.layer_id AND b.pool_id IN (NEW.from_pool_id,NEW.to_pool_id))))
+      THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Both pool projections are required'; END IF;
+    END IF;
   END$$
+
+CREATE TRIGGER reallocation_no_delete BEFORE DELETE ON inventory_reallocations FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Reallocation history is immutable'; END$$
+
+CREATE TRIGGER reallocation_line_insert BEFORE INSERT ON inventory_reallocation_lines FOR EACH ROW BEGIN
+    IF NEW.value IS NOT NULL OR NOT EXISTS (SELECT 1 FROM inventory_reallocations r WHERE r.tenant_id = NEW.tenant_id AND r.legal_entity_id = NEW.legal_entity_id AND r.id = NEW.request_id AND r.status = 'DRAFT' AND r.warehouse_id = NEW.warehouse_id AND r.sku_id = NEW.sku_id)
+    THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Layer plan requires its matching draft request'; END IF; END$$
+
+CREATE TRIGGER reallocation_line_update BEFORE UPDATE ON inventory_reallocation_lines FOR EACH ROW BEGIN
+    IF NOT (NEW.id <=> OLD.id) OR NOT (NEW.tenant_id <=> OLD.tenant_id) OR NOT (NEW.legal_entity_id <=> OLD.legal_entity_id) OR NOT (NEW.request_id <=> OLD.request_id) OR NOT (NEW.line_number <=> OLD.line_number) OR NOT (NEW.warehouse_id <=> OLD.warehouse_id) OR NOT (NEW.sku_id <=> OLD.sku_id) OR NOT (NEW.layer_id <=> OLD.layer_id) OR NOT (NEW.quantity <=> OLD.quantity)
+      OR OLD.value IS NOT NULL OR NEW.value IS NULL OR NOT EXISTS (SELECT 1 FROM inventory_reallocations r WHERE r.tenant_id = NEW.tenant_id AND r.legal_entity_id = NEW.legal_entity_id AND r.id = NEW.request_id AND r.status = 'EXECUTING')
+    THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Layer plan is immutable; execution may assign value once'; END IF; END$$
+
+CREATE TRIGGER reallocation_line_no_delete BEFORE DELETE ON inventory_reallocation_lines FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Reallocation layers are immutable'; END$$
+
+CREATE TRIGGER reservation_insert_guard BEFORE INSERT ON inventory_reservations FOR EACH ROW BEGIN
+   IF NEW.status <> 'ASSEMBLING' OR NOT EXISTS (SELECT 1 FROM inventory_pools p WHERE p.tenant_id = NEW.tenant_id AND p.legal_entity_id = NEW.legal_entity_id AND p.id = NEW.destination_pool_id AND p.kind = 'COUNTRY') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Reservation requires an assembling country destination'; END IF; END$$
+
+CREATE TRIGGER reservation_transition BEFORE UPDATE ON inventory_reservations FOR EACH ROW BEGIN
+   IF NOT (NEW.id <=> OLD.id) OR NOT (NEW.tenant_id <=> OLD.tenant_id) OR NOT (NEW.legal_entity_id <=> OLD.legal_entity_id) OR NOT (NEW.reference <=> OLD.reference) OR NOT (NEW.warehouse_id <=> OLD.warehouse_id) OR NOT (NEW.destination_pool_id <=> OLD.destination_pool_id) OR NOT (NEW.reservation_date <=> OLD.reservation_date) OR NOT (NEW.period_id <=> OLD.period_id) OR NOT (NEW.reason <=> OLD.reason) OR NOT (NEW.created_by <=> OLD.created_by) OR NOT (NEW.created_at <=> OLD.created_at)
+     OR NOT ((OLD.status = 'ASSEMBLING' AND NEW.status = 'ACTIVE') OR (OLD.status = 'ACTIVE' AND NEW.status IN ('CLOSED','CANCELLED'))) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Reservation identity and terminal state are immutable'; END IF;
+   IF NEW.status = 'ACTIVE' THEN
+     IF NOT EXISTS (SELECT 1 FROM inventory_periods i JOIN accounting_periods p ON p.tenant_id = i.tenant_id AND p.legal_entity_id = i.legal_entity_id AND p.id = i.accounting_period_id WHERE i.tenant_id = NEW.tenant_id AND i.legal_entity_id = NEW.legal_entity_id AND i.id = NEW.period_id AND i.status = 'OPEN' AND p.status = 'OPEN' AND NEW.reservation_date BETWEEN p.start_date AND p.end_date) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Both reservation periods must be open'; END IF;
+     IF NOT EXISTS (SELECT 1 FROM inventory_reservation_lines l WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.reservation_id = NEW.id)
+       OR EXISTS (SELECT 1 FROM inventory_reservation_lines l WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.reservation_id = NEW.id AND l.quantity <> COALESCE((SELECT SUM(a.quantity) FROM inventory_reservation_allocations a WHERE a.tenant_id = l.tenant_id AND a.legal_entity_id = l.legal_entity_id AND a.reservation_line_id = l.id),0)) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Reservation lines must match exact allocations'; END IF;
+   ELSEIF EXISTS (SELECT 1 FROM inventory_reservation_allocations a WHERE a.tenant_id = NEW.tenant_id AND a.legal_entity_id = NEW.legal_entity_id AND a.reservation_id = NEW.id AND a.quantity - a.released_quantity - a.issued_quantity > 0) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cannot close a reservation with outstanding stock'; END IF;
+   IF NEW.status = 'CANCELLED' AND NOT EXISTS (SELECT 1 FROM inventory_reservation_releases x WHERE x.tenant_id = NEW.tenant_id AND x.legal_entity_id = NEW.legal_entity_id AND x.reservation_id = NEW.id AND x.kind = 'CANCEL' AND x.status = 'POSTED') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cancellation needs a posted release'; END IF;
+ END$$
+
+CREATE TRIGGER inventory_reservations_no_delete BEFORE DELETE ON inventory_reservations FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Inventory reservation and issue history is immutable'; END$$
+
+CREATE TRIGGER reservation_line_insert_guard BEFORE INSERT ON inventory_reservation_lines FOR EACH ROW BEGIN IF NOT EXISTS (SELECT 1 FROM inventory_reservations r WHERE r.tenant_id = NEW.tenant_id AND r.legal_entity_id = NEW.legal_entity_id AND r.id = NEW.reservation_id AND r.status = 'ASSEMBLING') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Reservation line requires its assembling header'; END IF; END$$
+
+CREATE TRIGGER inventory_reservation_lines_no_update BEFORE UPDATE ON inventory_reservation_lines FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Inventory reservation and issue history is immutable'; END$$
+
+CREATE TRIGGER inventory_reservation_lines_no_delete BEFORE DELETE ON inventory_reservation_lines FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Inventory reservation and issue history is immutable'; END$$
+
+CREATE TRIGGER reservation_allocation_insert_guard BEFORE INSERT ON inventory_reservation_allocations FOR EACH ROW BEGIN
+   IF NEW.released_quantity <> 0 OR NEW.issued_quantity <> 0 OR NOT EXISTS (SELECT 1 FROM inventory_reservations r JOIN inventory_pools p ON p.tenant_id = r.tenant_id AND p.legal_entity_id = r.legal_entity_id AND p.id = NEW.pool_id
+     WHERE r.tenant_id = NEW.tenant_id AND r.legal_entity_id = NEW.legal_entity_id AND r.id = NEW.reservation_id AND r.status = 'ASSEMBLING' AND r.warehouse_id = NEW.warehouse_id AND (p.id = r.destination_pool_id OR p.kind = 'GENERAL')) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Reservation pool must be destination or GENERAL'; END IF;
+   IF NEW.quantity + (SELECT COALESCE(SUM(a.quantity - a.released_quantity - a.issued_quantity),0) FROM inventory_reservation_allocations a JOIN inventory_reservations r ON r.tenant_id = a.tenant_id AND r.legal_entity_id = a.legal_entity_id AND r.id = a.reservation_id WHERE a.tenant_id = NEW.tenant_id AND a.legal_entity_id = NEW.legal_entity_id AND a.warehouse_id = NEW.warehouse_id AND a.sku_id = NEW.sku_id AND a.layer_id = NEW.layer_id AND a.pool_id = NEW.pool_id AND r.status IN ('ASSEMBLING','ACTIVE')) > COALESCE((SELECT b.quantity FROM inventory_pool_balances b WHERE b.tenant_id = NEW.tenant_id AND b.legal_entity_id = NEW.legal_entity_id AND b.warehouse_id = NEW.warehouse_id AND b.sku_id = NEW.sku_id AND b.layer_id = NEW.layer_id AND b.pool_id = NEW.pool_id),0) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Reservation exceeds available pool stock'; END IF;
+ END$$
+
+CREATE TRIGGER reservation_allocation_update_guard BEFORE UPDATE ON inventory_reservation_allocations FOR EACH ROW BEGIN
+   IF NOT (NEW.id <=> OLD.id) OR NOT (NEW.tenant_id <=> OLD.tenant_id) OR NOT (NEW.legal_entity_id <=> OLD.legal_entity_id) OR NOT (NEW.reservation_id <=> OLD.reservation_id) OR NOT (NEW.reservation_line_id <=> OLD.reservation_line_id) OR NOT (NEW.allocation_number <=> OLD.allocation_number) OR NOT (NEW.warehouse_id <=> OLD.warehouse_id) OR NOT (NEW.sku_id <=> OLD.sku_id) OR NOT (NEW.layer_id <=> OLD.layer_id) OR NOT (NEW.pool_id <=> OLD.pool_id) OR NOT (NEW.quantity <=> OLD.quantity)
+     OR NOT EXISTS (SELECT 1 FROM inventory_reservations r WHERE r.tenant_id = NEW.tenant_id AND r.legal_entity_id = NEW.legal_entity_id AND r.id = NEW.reservation_id AND r.status = 'ACTIVE') OR NEW.released_quantity < OLD.released_quantity OR NEW.issued_quantity < OLD.issued_quantity
+     OR NOT ((NEW.released_quantity > OLD.released_quantity AND NEW.issued_quantity = OLD.issued_quantity) OR (NEW.issued_quantity > OLD.issued_quantity AND NEW.released_quantity = OLD.released_quantity)) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Reservation allocation identity is immutable'; END IF;
+   IF NEW.released_quantity <> COALESCE((SELECT SUM(l.quantity) FROM inventory_reservation_release_lines l WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.allocation_id = NEW.id),0)
+     OR NEW.issued_quantity <> COALESCE((SELECT SUM(l.quantity) FROM inventory_issue_lines l WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.allocation_id = NEW.id),0) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Reservation counters require matching immutable action lines'; END IF;
+ END$$
+
+CREATE TRIGGER inventory_reservation_allocations_no_delete BEFORE DELETE ON inventory_reservation_allocations FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Inventory reservation and issue history is immutable'; END$$
+
+CREATE TRIGGER reservation_release_insert_guard BEFORE INSERT ON inventory_reservation_releases FOR EACH ROW BEGIN IF NEW.status <> 'ASSEMBLING' OR NOT EXISTS (SELECT 1 FROM inventory_reservations r WHERE r.tenant_id = NEW.tenant_id AND r.legal_entity_id = NEW.legal_entity_id AND r.id = NEW.reservation_id AND r.status = 'ACTIVE') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Release requires an active reservation'; END IF; END$$
+
+CREATE TRIGGER reservation_release_line_insert_guard BEFORE INSERT ON inventory_reservation_release_lines FOR EACH ROW BEGIN
+   IF NOT EXISTS (SELECT 1 FROM inventory_reservation_releases r JOIN inventory_reservation_allocations a ON a.tenant_id = r.tenant_id AND a.legal_entity_id = r.legal_entity_id AND a.reservation_id = r.reservation_id
+     WHERE r.tenant_id = NEW.tenant_id AND r.legal_entity_id = NEW.legal_entity_id AND r.id = NEW.release_id AND r.status = 'ASSEMBLING' AND a.id = NEW.allocation_id AND NEW.quantity <= a.quantity - a.released_quantity - a.issued_quantity) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Release exceeds its outstanding allocation'; END IF; END$$
+
+CREATE TRIGGER reservation_release_post_guard BEFORE UPDATE ON inventory_reservation_releases FOR EACH ROW BEGIN
+   IF NOT (NEW.id <=> OLD.id) OR NOT (NEW.tenant_id <=> OLD.tenant_id) OR NOT (NEW.legal_entity_id <=> OLD.legal_entity_id) OR NOT (NEW.reservation_id <=> OLD.reservation_id) OR NOT (NEW.kind <=> OLD.kind) OR NOT (NEW.reason <=> OLD.reason) OR NOT (NEW.created_by <=> OLD.created_by) OR NOT (NEW.created_at <=> OLD.created_at) OR OLD.status <> 'ASSEMBLING' OR NEW.status <> 'POSTED'
+     OR NOT EXISTS (SELECT 1 FROM inventory_reservation_release_lines l WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.release_id = NEW.id) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Release is immutable and needs lines'; END IF;
+   IF EXISTS (SELECT 1 FROM inventory_reservation_release_lines l JOIN inventory_reservation_allocations a ON a.tenant_id = l.tenant_id AND a.legal_entity_id = l.legal_entity_id AND a.id = l.allocation_id
+      WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.release_id = NEW.id AND a.released_quantity <> (SELECT SUM(x.quantity) FROM inventory_reservation_release_lines x WHERE x.tenant_id = a.tenant_id AND x.legal_entity_id = a.legal_entity_id AND x.allocation_id = a.id)) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Release counters must reconcile'; END IF;
+ END$$
+
+CREATE TRIGGER inventory_reservation_releases_no_delete BEFORE DELETE ON inventory_reservation_releases FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Inventory reservation and issue history is immutable'; END$$
+
+CREATE TRIGGER inventory_reservation_release_lines_no_update BEFORE UPDATE ON inventory_reservation_release_lines FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Inventory reservation and issue history is immutable'; END$$
+
+CREATE TRIGGER inventory_reservation_release_lines_no_delete BEFORE DELETE ON inventory_reservation_release_lines FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Inventory reservation and issue history is immutable'; END$$
+
+CREATE TRIGGER issue_insert_guard BEFORE INSERT ON inventory_issues FOR EACH ROW BEGIN IF NEW.status <> 'ASSEMBLING' OR NOT EXISTS (SELECT 1 FROM inventory_reservations r WHERE r.tenant_id = NEW.tenant_id AND r.legal_entity_id = NEW.legal_entity_id AND r.id = NEW.reservation_id AND r.status = 'ACTIVE') THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Issue requires an active reservation'; END IF; END$$
+
+CREATE TRIGGER issue_line_insert_guard BEFORE INSERT ON inventory_issue_lines FOR EACH ROW BEGIN
+   IF NOT EXISTS (SELECT 1 FROM inventory_issues i JOIN inventory_reservation_allocations a ON a.tenant_id = i.tenant_id AND a.legal_entity_id = i.legal_entity_id AND a.reservation_id = i.reservation_id
+      WHERE i.tenant_id = NEW.tenant_id AND i.legal_entity_id = NEW.legal_entity_id AND i.id = NEW.issue_id AND i.status = 'ASSEMBLING' AND i.reservation_id = NEW.reservation_id AND a.id = NEW.allocation_id AND NEW.quantity <= a.quantity - a.released_quantity - a.issued_quantity) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Issue exceeds its outstanding reserved allocation'; END IF; END$$
+
+CREATE TRIGGER inventory_issues_no_delete BEFORE DELETE ON inventory_issues FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Inventory reservation and issue history is immutable'; END$$
+
+CREATE TRIGGER inventory_issue_lines_no_update BEFORE UPDATE ON inventory_issue_lines FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Inventory reservation and issue history is immutable'; END$$
+
+CREATE TRIGGER inventory_issue_lines_no_delete BEFORE DELETE ON inventory_issue_lines FOR EACH ROW BEGIN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Inventory reservation and issue history is immutable'; END$$
+
+CREATE TRIGGER issue_post_guard BEFORE UPDATE ON inventory_issues FOR EACH ROW BEGIN
+   IF NOT (NEW.id <=> OLD.id) OR NOT (NEW.tenant_id <=> OLD.tenant_id) OR NOT (NEW.legal_entity_id <=> OLD.legal_entity_id) OR NOT (NEW.reservation_id <=> OLD.reservation_id) OR NOT (NEW.reference <=> OLD.reference) OR NOT (NEW.payload_hash <=> OLD.payload_hash) OR NOT (NEW.dispatch_date <=> OLD.dispatch_date) OR NOT (NEW.posting_date <=> OLD.posting_date) OR NOT (NEW.period_id <=> OLD.period_id) OR NOT (NEW.movement_type_id <=> OLD.movement_type_id) OR NOT (NEW.description <=> OLD.description) OR NOT (NEW.currency <=> OLD.currency) OR NOT (NEW.total_value <=> OLD.total_value) OR NOT (NEW.created_by <=> OLD.created_by) OR NOT (NEW.created_at <=> OLD.created_at)
+     OR OLD.status <> 'ASSEMBLING' OR NEW.status <> 'POSTED' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Posted issues are immutable'; END IF;
+   IF NOT EXISTS (SELECT 1 FROM inventory_periods i JOIN accounting_periods p ON p.tenant_id = i.tenant_id AND p.legal_entity_id = i.legal_entity_id AND p.id = i.accounting_period_id WHERE i.tenant_id = NEW.tenant_id AND i.legal_entity_id = NEW.legal_entity_id AND i.id = NEW.period_id AND i.status = 'OPEN' AND p.status = 'OPEN' AND NEW.posting_date BETWEEN p.start_date AND p.end_date) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Both issue periods must be open'; END IF;
+   IF NOT EXISTS (SELECT 1 FROM inventory_issue_lines l WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.issue_id = NEW.id)
+     OR NEW.total_value <> (SELECT SUM(l.value) FROM inventory_issue_lines l WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.issue_id = NEW.id)
+     OR NOT EXISTS (SELECT 1 FROM inventory_events e WHERE e.tenant_id = NEW.tenant_id AND e.legal_entity_id = NEW.legal_entity_id AND e.issue_id = NEW.id) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Issue lines and event must match header'; END IF;
+   IF EXISTS (SELECT 1 FROM inventory_issue_lines l JOIN inventory_reservation_allocations a ON a.tenant_id = l.tenant_id AND a.legal_entity_id = l.legal_entity_id AND a.id = l.allocation_id
+     WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.issue_id = NEW.id AND (a.issued_quantity <> (SELECT SUM(x.quantity) FROM inventory_issue_lines x WHERE x.tenant_id = a.tenant_id AND x.legal_entity_id = a.legal_entity_id AND x.allocation_id = a.id)
+       OR NOT EXISTS (SELECT 1 FROM inventory_physical_ledger p JOIN inventory_events e ON e.tenant_id = p.tenant_id AND e.legal_entity_id = p.legal_entity_id AND e.id = p.event_id WHERE p.tenant_id = l.tenant_id AND p.legal_entity_id = l.legal_entity_id AND p.warehouse_id = l.warehouse_id AND p.sku_id = l.sku_id AND p.layer_id = l.layer_id AND e.issue_id = NEW.id)
+       OR NOT EXISTS (SELECT 1 FROM inventory_pool_ledger p JOIN inventory_events e ON e.tenant_id = p.tenant_id AND e.legal_entity_id = p.legal_entity_id AND e.id = p.event_id WHERE p.tenant_id = l.tenant_id AND p.legal_entity_id = l.legal_entity_id AND p.warehouse_id = l.warehouse_id AND p.sku_id = l.sku_id AND p.layer_id = l.layer_id AND p.pool_id = l.pool_id AND e.issue_id = NEW.id))) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Issue must consume both physical and reserved pool stock'; END IF;
+   IF EXISTS (SELECT 1 FROM inventory_issue_lines l JOIN inventory_balances b ON b.tenant_id = l.tenant_id AND b.legal_entity_id = l.legal_entity_id AND b.warehouse_id = l.warehouse_id AND b.sku_id = l.sku_id AND b.layer_id = l.layer_id WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.issue_id = NEW.id AND (b.quantity <> (SELECT SUM(p.quantity) FROM inventory_physical_ledger p WHERE p.tenant_id = b.tenant_id AND p.legal_entity_id = b.legal_entity_id AND p.warehouse_id = b.warehouse_id AND p.sku_id = b.sku_id AND p.layer_id = b.layer_id) OR b.value <> (SELECT SUM(p.value) FROM inventory_physical_ledger p WHERE p.tenant_id = b.tenant_id AND p.legal_entity_id = b.legal_entity_id AND p.warehouse_id = b.warehouse_id AND p.sku_id = b.sku_id AND p.layer_id = b.layer_id))) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Issue projections must reconcile to their ledgers'; END IF;
+IF EXISTS (SELECT 1 FROM inventory_issue_lines l JOIN inventory_pool_balances b ON b.tenant_id = l.tenant_id AND b.legal_entity_id = l.legal_entity_id AND b.warehouse_id = l.warehouse_id AND b.sku_id = l.sku_id AND b.layer_id = l.layer_id AND b.pool_id = l.pool_id WHERE l.tenant_id = NEW.tenant_id AND l.legal_entity_id = NEW.legal_entity_id AND l.issue_id = NEW.id AND (b.quantity <> (SELECT SUM(p.quantity) FROM inventory_pool_ledger p WHERE p.tenant_id = b.tenant_id AND p.legal_entity_id = b.legal_entity_id AND p.warehouse_id = b.warehouse_id AND p.sku_id = b.sku_id AND p.layer_id = b.layer_id AND p.pool_id = b.pool_id) OR b.value <> (SELECT SUM(p.value) FROM inventory_pool_ledger p WHERE p.tenant_id = b.tenant_id AND p.legal_entity_id = b.legal_entity_id AND p.warehouse_id = b.warehouse_id AND p.sku_id = b.sku_id AND p.layer_id = b.layer_id AND p.pool_id = b.pool_id))) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Issue projections must reconcile to their ledgers'; END IF;
+ END$$
+
+CREATE TRIGGER inventory_balances_reserved_guard BEFORE UPDATE ON inventory_balances FOR EACH ROW BEGIN IF NEW.quantity < (SELECT COALESCE(SUM(a.quantity - a.released_quantity - a.issued_quantity),0) FROM inventory_reservation_allocations a JOIN inventory_reservations r ON r.tenant_id = a.tenant_id AND r.legal_entity_id = a.legal_entity_id AND r.id = a.reservation_id WHERE a.tenant_id = NEW.tenant_id AND a.legal_entity_id = NEW.legal_entity_id AND a.warehouse_id = NEW.warehouse_id AND a.sku_id = NEW.sku_id AND a.layer_id = NEW.layer_id AND r.status IN ('ASSEMBLING','ACTIVE')) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock cannot fall below outstanding reservations'; END IF; END$$
+
+CREATE TRIGGER inventory_pool_balances_reserved_guard BEFORE UPDATE ON inventory_pool_balances FOR EACH ROW BEGIN IF NEW.quantity < (SELECT COALESCE(SUM(a.quantity - a.released_quantity - a.issued_quantity),0) FROM inventory_reservation_allocations a JOIN inventory_reservations r ON r.tenant_id = a.tenant_id AND r.legal_entity_id = a.legal_entity_id AND r.id = a.reservation_id WHERE a.tenant_id = NEW.tenant_id AND a.legal_entity_id = NEW.legal_entity_id AND a.warehouse_id = NEW.warehouse_id AND a.sku_id = NEW.sku_id AND a.layer_id = NEW.layer_id AND a.pool_id = NEW.pool_id AND r.status IN ('ASSEMBLING','ACTIVE')) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Stock cannot fall below outstanding reservations'; END IF; END$$
+
 DELIMITER ;
+
+-- PR-02E/PR-02F snapshots, close/reopen, reversals and adjustments remain planned.
+-- Their tested forward migrations must extend this reference and retained verification.

@@ -3,13 +3,13 @@ import { Field, inputStyle } from '@/pages/accounting/accounting-ui'
 import { useDebouncedValue, useProducts } from './useProducts'
 import { ProductLoadState, ProductPager } from './product-ui'
 
-export default function ProductPicker({ base, resource, revision, label, value, onChange, required = false, disabled = false, activeOnly = true }) {
+export default function ProductPicker({ base, resource, revision, label, value, onChange, required = false, disabled = false, activeOnly = true, filters = {} }) {
   const [q, setQ] = useState('')
   const [offset, setOffset] = useState(0)
   const query = useDebouncedValue(q)
   const selection = useProducts(base, `${resource}/${value}`, {}, revision, !!value)
   const selected = selection.data?.item
-  const request = useProducts(base, resource, { q: query, offset, limit: 25, ...(activeOnly && { active: 'true' }) }, revision)
+  const request = useProducts(base, resource, { ...filters, q: query, offset, limit: 25, ...(activeOnly && { active: 'true' }) }, revision)
   const list = q === query ? request : { ...request, data: null, loading: true }
   const items = list.data?.items ?? []
   return <fieldset disabled={disabled} className="min-w-0 rounded-lg border border-slate-200 p-3">

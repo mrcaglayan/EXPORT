@@ -1,4 +1,4 @@
-# PR-01 / PR-02 design baseline — version 5
+# PR-01 / PR-02 design baseline — version 7
 
 Created **21 October 2026 (Europe/Istanbul)** with the user's explicit instruction
 to write a new baseline and proceed with PR-01A. This is a new design derived
@@ -8,12 +8,12 @@ claim that future inventory features have been implemented.
 
 The tracked files in `docs/design/` are authoritative. Matching copies in
 `docs/project-root/` beside the roadmap allow its original filenames to resolve. Update both copies
-when revising this baseline. The companion SQL contains implemented PR-01A/PR-01B/PR-02A/PR-02B definitions
+when revising this baseline. The companion SQL contains implemented PR-01A/PR-01B/PR-02A/PR-02B/PR-02C/PR-02D definitions
 and clearly marked future contracts. Runtime schema changes use registered,
 forward-only JavaScript migrations; do not execute the reference SQL against
 an existing database.
 
-Revised **22 October 2026** for PR-02B receipt layers and stock ledgers. PR-02C controlled pool reallocation is next. Real purchase sources remain PR-03.
+Revised **23 October 2026** for PR-02D reservations and FIFO dispatch. PR-02E trial balance, snapshots and close is next. Real purchase sources remain PR-03.
 
 ## Scope and shared contracts
 
@@ -25,7 +25,7 @@ Revised **22 October 2026** for PR-02B receipt layers and stock ledgers. PR-02C 
 - Existing m001/m002/m003 and existing accounting records remain unchanged.
   PR-01A introduces `m004_product_foundation`; PR-01B introduces
   `m005_product_classification`. PR-02A adds `m006_inventory_foundation`.
-  PR-02B adds `m007_inventory_receipts`. Later features get new migrations; applied m001–m007 remain unchanged.
+  PR-02B adds `m007_inventory_receipts`; PR-02C adds `m008_inventory_reallocations`. PR-02D adds `m009_inventory_reservations_issues`. Later features get new migrations; applied m001–m009 remain unchanged.
 - UUID IDs use `CHAR(36)`. Every domain table carries `tenant_id` and
   `legal_entity_id`. Scoped unique keys and composite foreign keys prevent a
   relationship to another tenant/entity, even when a caller knows its UUID.
@@ -245,18 +245,69 @@ at posting and reject history edits, deletion and late additions. Warehouses,
 pools and SKUs with stock cannot be deactivated; posted movement references are
 also guarded. No GL-posted or VAT-deducted state is implied.
 
-FIFO source ordering is received date, creation time and layer UUID; consuming
-stock is deferred to PR-02D. PR-02C must extend receipt-only event provenance and
-positive pool-movement constraints in a new forward migration for approved
-equal/opposite pool movements. See docs/architecture/inventory-receipts.md for
+FIFO source ordering is received date, creation time and layer UUID; PR-02D now
+uses that order for fixed reservation allocations and their consumption. PR-02C extends receipt-only event provenance and
+positive pool-movement constraints in m008 for approved equal/opposite movements. See docs/architecture/inventory-receipts.md for
 the exact API, rounding, locking, fixture boundary and future migration contracts.
 
-## PR-02C–02F target schema contracts (planned, not applied)
+## PR-02C controlled borrowing (implemented)
+
+Two new tables, inventory_reallocations and inventory_reallocation_lines, retain
+request/review/cancellation/execution history and fixed FIFO source-layer quantities.
+m008 extends inventory_events with exactly one RECEIPT or REALLOCATION source and
+allows signed pool entries with matching value signs. Receipt physical entries
+remain positive. A target pool projection may start at zero only for a matching
+executing request; existing immutability and reconciliation checks are retained.
+
+Preview priority is destination COUNTRY, then GENERAL, then explicit shortfall.
+A COUNTRY donor requires an independent authorized reviewer; GENERAL allows the
+same authorized reviewer. Pending requests do not reserve stock. Execution
+rechecks the approved layers, active references and both open periods under the
+entity lock. Backdated stock spending before the layer's latest movement is
+rejected. Equal/opposite pool entries conserve physical quantity and value and
+create no GL entries. Exact remaining carrying value is split proportionally;
+full depletion moves residual rounding value. Audit and retry records are atomic.
+Original receipt allocation reads remain tied to their receipt event.
+
+m008 verifies the entire evolved receipt schema via an explicit runner handoff;
+old migration checksums/history are preserved. See
+[the allocation contract](../architecture/inventory-reallocations.md).
+
+## PR-02D reservations and dispatch (implemented)
+
+Seven tables retain reservation headers/document lines/fixed source allocations,
+release headers/lines and issue headers/consumption lines. m009 brings the schema
+to 50 tables and verifies the full evolved receipt/reallocation schema. It extends
+immutable events with exactly one ISSUE source, signed physical entries and
+projection guards against spending reserved stock. Both original migration sources
+and history remain unchanged.
+
+Reservation priority is destination COUNTRY then GENERAL, FIFO within each pool.
+Repeated SKUs remain separate document lines; stock is shared across planning so
+a quantity cannot be reserved twice. Available equals on-hand minus outstanding
+allocations, including for previews and transfers. Partial release takes later
+allocations first; cancellation frees only the unissued remainder. Dispatch
+consumes exact retained allocations, proportionate remaining carrying value and
+full residual value on depletion. Free stock remains zero cost. On-hand changes
+only on dispatch, with matching physical and pool quantities/values.
+
+Both posting calendars, active references and conservative movement-date checks
+apply under the common entity lock. Partial release/cancel can occur after closure.
+All source lines, counters, ledgers/projections, audit and replay results are atomic.
+No document-line cap; batched inserts, paged reads/editor and 1 MiB JSON guard.
+Inventory includes reservation actions, dispatch source details and reserved/
+available balances. ADMIN-only manage/post permissions preserve reader access.
+
+No GL journal or posting request is generated: no approved dispatch accounting
+event/account policy exists yet. Invoice, dispatch, ownership transfer, customs
+and VAT effects remain distinct. PR-02E must expose unposted GL differences and
+carry outstanding reservations across periods. See
+[the reservation contract](../architecture/inventory-reservations.md).
+
+## PR-02E–02F target schema contracts (planned, not applied)
 
 | Stage | Planned records | Grain and invariants |
 |---|---|---|
-| 02C | pool reallocation request/review/execution | Same warehouse/SKU/layer; equal/opposite pool deltas; requester cannot approve own other-country borrowing; physical and GL unchanged |
-| 02D | reservations and reservation layer allocations, dispatch/source links | Available quantity at warehouse/SKU/layer/pool; FIFO, deterministic locks, no over-reservation or duplicate consumption |
 | 02E | close requests, versioned snapshots, reconciliation checkpoints | Entity/period/version, SKU/warehouse/layer/pool balances; approved prior close plus in-period movements; locked periods and controlled reopen |
 | 02F | reversals, approved adjustments, valuation changes | Exact original-event lineage; immutable history, idempotent reversal; quantity/value conservation at every affected grain |
 

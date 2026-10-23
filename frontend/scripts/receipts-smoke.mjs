@@ -43,7 +43,7 @@ export async function checkReceipts(page, base, artifacts) {
   await page.getByRole('button', { name: 'Clear stock filters' }).click()
   await page.getByRole('button', { name: 'View receipt BROWSER-RECEIPT', exact: true }).waitFor()
   await tab('Stock balances')
-  await page.getByRole('cell', { name: '100.000000', exact: true }).waitFor()
+  await page.getByRole('cell', { name: '100.000000', exact: true }).first().waitFor()
   await page.getByRole('button', { name: 'Filter SKU ZARF-A3', exact: true }).click()
   await page.getByText('1–1 of 1', { exact: true }).last().waitFor()
   await page.getByRole('button', { name: 'View source BROWSER-RECEIPT line 1', exact: true }).click()
@@ -51,7 +51,7 @@ export async function checkReceipts(page, base, artifacts) {
   await tab('Pool balances')
   await page.getByText('Filter stock records', { exact: true }).click()
   await page.getByLabel('Pool filter', { exact: true }).selectOption(expected.cm)
-  await page.getByRole('cell', { name: '10.000000', exact: true }).waitFor()
+  await page.getByRole('cell', { name: '10.000000', exact: true }).first().waitFor()
   await page.getByRole('cell', { name: '5000.000000 TRY', exact: true }).waitFor()
   for (const name of ['Source layers', 'Physical ledger', 'Pool ledger']) {
     await tab(name)

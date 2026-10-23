@@ -1,7 +1,7 @@
 # PR-02A handoff — Inventory foundation
 
-**Current status — 22 October 2026:** PR-02B is implemented; see the
-[PR-02B handoff](PR-02B.md). PR-02C is next. The dated results below describe
+**Current status — 23 October 2026:** PR-02D is implemented; see the
+[PR-02D handoff](PR-02D.md). PR-02E is next. The dated results below describe
 the PR-02A delivery and its original next-step context.
 
 Completed **22 October 2026 (Europe/Istanbul)**. Next is **PR-02B: goods receipts,

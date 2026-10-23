@@ -18,6 +18,10 @@ Dashboard, Exports and VAT remain navigation placeholders.
 PR-02B adds receipt source layers, immutable physical/pool ledgers and stock
 balance views. Receipt posting currently accepts disposable test fixtures only;
 real purchase sources and VAT calculations remain planned.
+PR-02C adds destination/GENERAL availability previews, explicit pool transfer
+requests, independent approval for country borrowing and atomic execution.
+PR-02D adds multi-SKU reservations, partial release/cancel and FIFO dispatch,
+with reserved-stock protection, exact source consumption and stock cost tracking.
 
 The application uses sidebar-only navigation. There is no top navigation/header
 or breadcrumb bar. On mobile, the floating Menu button opens the sidebar drawer.
@@ -26,7 +30,7 @@ sidebar or relevant page. Pages start directly with their main content, without
 separate “Your workspace”/page-name/subtitle introductions. Meaningful headings
 and actions stay within content panels.
 
-**Next: PR-02C — destination allocation and approved pool borrowing.**
+**Next: PR-02E — stock trial balance, month-end snapshots and close.**
 The user-authorized [new design baseline](docs/design/PR01_PR02_database_specification.md)
 and [SQL reference](docs/design/PR01_PR02_schema.sql) were written on 21 October
 2026; the originally referenced files were not supplied.
@@ -336,7 +340,7 @@ There is no remote repository or commit created by this bootstrap.
 
 See the [architecture and reference review](docs/architecture/bootstrap.md) and
 the [PR-00AA handoff](docs/pr-handoffs/PR-00AA.md) for the original scaffold.
-The [PR-02B handoff](docs/pr-handoffs/PR-02B.md) records the current changes,
+The [PR-02D handoff](docs/pr-handoffs/PR-02D.md) records the current changes,
 executed checks and known limitations.
 
 ## Product catalogue
@@ -465,3 +469,36 @@ rounding, concurrent retries, closed periods, scope, history immutability and fu
 rollback. Run `test:pr02a` for setup regression and `test:pr01` for the earlier
 domains plus the combined browser flow. See the
 [receipt and ledger contract](docs/architecture/inventory-receipts.md).
+
+## Allocation and controlled borrowing (PR-02C)
+
+Open Inventory → Allocation & borrowing to preview destination/GENERAL availability,
+request an explicit pool transfer, review its fixed source layers and execute after
+approval. Borrowing from another country requires a different authorized reviewer.
+Pending requests do not reserve stock; execution can fail if another request spends
+its layers first. Physical stock and GL remain unchanged. The local company still
+has no posted stock; normal receipt entry arrives with purchasing in PR-03.
+
+Run `npm --prefix backend run test:pr02c` for the isolated integration suite and
+`npm --prefix backend run test:pr02c:browser` for the combined browser workflow.
+See the [allocation contract](docs/architecture/inventory-reallocations.md) and
+[PR-02C handoff](docs/pr-handoffs/PR-02C.md). PR-02D extends these checks below.
+
+## Reservations and dispatch (PR-02D)
+
+Inventory → Reservations supports multiple stock items, repeated SKUs, partial
+release, dispatch and cancellation of the unshipped remainder. Selection uses
+unreserved destination stock then GENERAL in FIFO order. Transfers cannot spend
+reserved quantities. Dispatches retain exact receipt-line sources and consumed
+cost, and update both physical and pool stock atomically. No fixed document-line
+cap is imposed; the 1 MiB request guard and paged reads/editors remain.
+
+Dispatch does not imply a GL, invoice, ownership-transfer, customs or VAT event.
+Receipt entry remains fixture-only until PR-03; no local business stock is seeded.
+See [the reservation contract](docs/architecture/inventory-reservations.md) and
+[PR-02D handoff](docs/pr-handoffs/PR-02D.md). Next is PR-02E.
+
+```text
+npm --prefix backend run test:pr02d
+npm --prefix backend run test:pr02d:browser
+```

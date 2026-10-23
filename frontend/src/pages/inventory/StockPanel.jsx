@@ -38,12 +38,13 @@ export default function StockPanel({ base, resource, revision }) {
     {skuId && <p role="status" className="mt-2 text-sm text-slate-600">Showing the selected SKU.</p>}
     <LoadState result={list} label="stock records" />
     {list.data && <>
-      <Table columns={receipts ? ['Source', 'Posting date', 'Description', 'Value', 'Status', 'Details'] : ['Warehouse', 'SKU / unit', ...(pool ? ['Pool'] : []), 'Quantity', 'Value', 'Received', 'Source line']} rows={list.data.items}
+      <Table columns={receipts ? ['Source', 'Posting date', 'Description', 'Value', 'Status', 'Details'] : ['Warehouse', 'SKU / unit', ...(pool ? ['Pool'] : []), 'Quantity', ...(resource.endsWith('balances') ? ['Reserved', 'Available'] : []), 'Value', 'Received', ...(resource.endsWith('ledger') ? ['Movement'] : []), 'Source line']} rows={list.data.items}
         empty={q || warehouseId || poolId || skuId ? 'No matching stock records. Change or clear the filters.' : 'No posted stock records yet.'} render={row => receipts ? <>
           <Cell>{row.sourceId}</Cell><Cell>{row.postingDate}</Cell><Cell>{row.description}</Cell><Cell>{row.totalValue} {row.currency}</Cell><Cell>{row.status}</Cell><Cell><Button variant="outline" aria-label={`View receipt ${row.sourceId}`} onClick={() => setSelected(row.id)}>View</Button></Cell>
         </> : <>
           <Cell>{row.warehouseCode}</Cell><Cell><button type="button" className="text-teal-800 underline" aria-label={`Filter SKU ${row.skuCode}`} onClick={() => change(setSkuId, row.skuId)}>{row.skuCode}</button><br />{row.unitCode}</Cell>
-          {pool && <Cell>{row.poolCode}</Cell>}<Cell>{row.quantity}</Cell><Cell>{row.value} {row.currency}</Cell><Cell>{row.receivedDate}</Cell>
+          {pool && <Cell>{row.poolCode}</Cell>}<Cell>{row.quantity}</Cell>{resource.endsWith('balances') && <><Cell>{row.reservedQuantity}</Cell><Cell>{row.availableQuantity}</Cell></>}<Cell>{row.value} {row.currency}</Cell><Cell>{row.receivedDate}</Cell>
+          {resource.endsWith('ledger') && <Cell>{row.eventKind}<br />{row.postingDate}{row.reallocationReference && <p>{row.reallocationReference}</p>}{row.issueReference && <p>{row.issueReference}</p>}</Cell>}
           <Cell><button type="button" className="text-teal-800 underline" aria-label={`View source ${row.sourceId} line ${row.sourceLineKey}`} onClick={() => setSelected(row.receiptId)}>{row.sourceId} / {row.sourceLineKey}</button><details className="mt-1 text-xs"><summary>Layer reference</summary><span className="break-all">{row.layerId}</span></details></Cell>
         </>} />
       <Pager data={list.data} offset={offset} setOffset={setOffset} />

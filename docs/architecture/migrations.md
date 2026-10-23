@@ -91,6 +91,20 @@ alone is not proof that an existing table is compatible.
 
 ## Failure and explicit recovery
 
+PR-02C adds an explicit verification handoff for forward table extensions.
+`replacesVerificationFor` may list unique earlier registered migration keys.
+An applied successor (or a failed/interrupted successor being explicitly retried)
+owns verification of the complete evolved schema. Pending successors never
+suppress old checks. m008 includes a frozen m007 baseline and verifies all retained
+and changed objects, not only its new tables. Old checksums remain mandatory;
+history is never rewritten. Future successors must retain this complete coverage.
+An unexpected existing trigger is rejected rather than silently replaced.
+m009 carries the complete evolved m007/m008 schema and explicitly replaces both
+verifiers when applied or deliberately retried. It adds seven reservation/issue
+tables (50 total), issue event provenance, signed physical entries and reserved
+projection guards. All nine applied migration sources remain frozen.
+
+
 MySQL DDL can commit implicitly. The runner deliberately does not promise
 transactional rollback for a sequence of schema changes. It persists `running`
 before executing `up()` and records `applied` only after verification succeeds.

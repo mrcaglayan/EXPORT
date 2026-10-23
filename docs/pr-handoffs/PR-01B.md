@@ -1,7 +1,7 @@
 # PR-01B handoff — Specifications, GTİP review and supplier aliases
 
-**Current status — 22 October 2026:** PR-02B is implemented; see the
-[PR-02B handoff](PR-02B.md). PR-02C is next. The dated results below describe
+**Current status — 23 October 2026:** PR-02D is implemented; see the
+[PR-02D handoff](PR-02D.md). PR-02E is next. The dated results below describe
 the PR-01B delivery and retain its original next-step context.
 
 Completed **21 October 2026 (Europe/Istanbul)**. The local app remains at

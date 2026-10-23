@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Export Accounting API
-  version: 0.8.0
+  version: 0.10.0
   description: >-
     PR-00B identity and scoped access, plus foundation health/readiness.
 
@@ -19,15 +19,20 @@ info:
 
 
     PR-00C adds entity-scoped accounting, decimal strings, balanced immutable journals,
-    audit/idempotency and a durable posting-request boundary. No inventory, tax or exchange-rate
-    policy is implemented.
+    audit/idempotency and a durable posting-request boundary. This accounting stage does not
+    implement tax or exchange-rate policy.
 
-    PR-01A adds scoped units, hierarchical families and stockable SKUs. No inventory quantities are
-    created.
+    PR-01A adds scoped units, hierarchical families and stockable SKUs. This product stage creates
+    no inventory quantities.
 
     PR-01B adds typed SKU specifications, broker-verification records for GTIP history and exact
     versioned supplier aliases. A format-valid GTIP is not a classification decision. No tax rates
     or invoice imports are implemented.
+
+    PR-02A/B/C add inventory metadata, fixture-only receipts, immutable source layers and
+    physical/pool ledgers, stock projections, destination-first availability and explicitly reviewed
+    pool borrowing. Reallocations have no physical or GL effect. Reservations/dispatch remain
+    PR-02D; real purchase receipt sources remain PR-03.
 servers:
   - url: /
 paths:
@@ -4497,8 +4502,11 @@ paths:
     get:
       summary: List layers
       description: >-
-        Original source layers in received-date/created-time/UUID FIFO order. Requires
-        inventory.read and assigned entity scope.
+        Requires inventory.read and assigned entity scope. Exact decimal strings. Layers retain
+        original receipt quantities/cost; balances and ledgers include posted receipts, pool
+        transfers and dispatches as applicable. Balances expose on-hand quantity, outstanding
+        reservedQuantity and availableQuantity. Pool balances partition physical stock; reservations
+        do not reduce on-hand quantity.
       security:
         - SessionCookie: []
         - ProductionSessionCookie: []
@@ -4571,8 +4579,11 @@ paths:
     get:
       summary: List balances
       description: >-
-        Posted receipt records only. Exact decimal strings; pool balances divide physical quantity.
-        Requires inventory.read and assigned entity scope.
+        Requires inventory.read and assigned entity scope. Exact decimal strings. Layers retain
+        original receipt quantities/cost; balances and ledgers include posted receipts, pool
+        transfers and dispatches as applicable. Balances expose on-hand quantity, outstanding
+        reservedQuantity and availableQuantity. Pool balances partition physical stock; reservations
+        do not reduce on-hand quantity.
       security:
         - SessionCookie: []
         - ProductionSessionCookie: []
@@ -4617,7 +4628,7 @@ paths:
                   items:
                     type: array
                     items:
-                      $ref: '#/components/schemas/StockLayer'
+                      $ref: '#/components/schemas/PhysicalStockBalance'
                   total:
                     type: integer
                   limit:
@@ -4645,8 +4656,11 @@ paths:
     get:
       summary: List pool-balances
       description: >-
-        Posted receipt records only. Exact decimal strings; pool balances divide physical quantity.
-        Requires inventory.read and assigned entity scope.
+        Requires inventory.read and assigned entity scope. Exact decimal strings. Layers retain
+        original receipt quantities/cost; balances and ledgers include posted receipts, pool
+        transfers and dispatches as applicable. Balances expose on-hand quantity, outstanding
+        reservedQuantity and availableQuantity. Pool balances partition physical stock; reservations
+        do not reduce on-hand quantity.
       security:
         - SessionCookie: []
         - ProductionSessionCookie: []
@@ -4725,8 +4739,11 @@ paths:
     get:
       summary: List physical-ledger
       description: >-
-        Posted receipt records only. Exact decimal strings; pool balances divide physical quantity.
-        Requires inventory.read and assigned entity scope.
+        Requires inventory.read and assigned entity scope. Exact decimal strings. Layers retain
+        original receipt quantities/cost; balances and ledgers include posted receipts, pool
+        transfers and dispatches as applicable. Balances expose on-hand quantity, outstanding
+        reservedQuantity and availableQuantity. Pool balances partition physical stock; reservations
+        do not reduce on-hand quantity.
       security:
         - SessionCookie: []
         - ProductionSessionCookie: []
@@ -4799,8 +4816,11 @@ paths:
     get:
       summary: List pool-ledger
       description: >-
-        Posted receipt records only. Exact decimal strings; pool balances divide physical quantity.
-        Requires inventory.read and assigned entity scope.
+        Requires inventory.read and assigned entity scope. Exact decimal strings. Layers retain
+        original receipt quantities/cost; balances and ledgers include posted receipts, pool
+        transfers and dispatches as applicable. Balances expose on-hand quantity, outstanding
+        reservedQuantity and availableQuantity. Pool balances partition physical stock; reservations
+        do not reduce on-hand quantity.
       security:
         - SessionCookie: []
         - ProductionSessionCookie: []
@@ -4977,6 +4997,1397 @@ paths:
           description: >-
             400 invalid fields or identifiers; 401 unauthenticated; 403 scope/permission/Origin; 404
             inaccessible record; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/allocation-preview:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      summary: Preview destination then GENERAL availability
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.read, in an assigned entity. Advisory current eligible
+        stock, not a reservation or historical balance. Never includes another country
+        automatically. Excludes layers with later-dated movements. Availability subtracts all
+        outstanding reservations. Destination stock is selected first, then GENERAL, each in FIFO
+        order. It never silently borrows from another country.
+      parameters:
+        - name: warehouseId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: skuId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: toPoolId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: quantity
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        - name: postingDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllocationPreview'
+        default:
+          description: >-
+            400 validation/idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            independent reviewer or requester required; 404 inaccessible reference; 409 invalid
+            state, duplicate reference, idempotency conflict, inactive reference, closed period,
+            insufficient eligible stock or movement effect; 422 quantity precision, period or
+            destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/skus:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      summary: Find inventory SKU choices
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: 'Requires workspace.read and inventory.read, in an assigned entity. '
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 160
+        - name: active
+          in: query
+          schema:
+            type: string
+            enum:
+              - 'true'
+              - 'false'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventorySkuChoice'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 validation/idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            independent reviewer or requester required; 404 inaccessible reference; 409 invalid
+            state, duplicate reference, idempotency conflict, inactive reference, closed period,
+            insufficient eligible stock or movement effect; 422 quantity precision, period or
+            destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/skus/{id}:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read inventory SKU choice
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: 'Requires workspace.read and inventory.read, in an assigned entity. '
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  item:
+                    $ref: '#/components/schemas/InventorySkuChoice'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - item
+                  - requestId
+        default:
+          description: >-
+            400 validation/idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            independent reviewer or requester required; 404 inaccessible reference; 409 invalid
+            state, duplicate reference, idempotency conflict, inactive reference, closed period,
+            insufficient eligible stock or movement effect; 422 quantity precision, period or
+            destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reallocations:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      summary: List pool reallocation requests
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: 'Requires workspace.read and inventory.read, in an assigned entity. '
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - REQUESTED
+              - APPROVED
+              - REJECTED
+              - CANCELLED
+              - EXECUTED
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reallocation'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 validation/idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            independent reviewer or requester required; 404 inaccessible reference; 409 invalid
+            state, duplicate reference, idempotency conflict, inactive reference, closed period,
+            insufficient eligible stock or movement effect; 422 quantity precision, period or
+            destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Request an explicit pool transfer
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.reallocation.request, in an assigned entity. Source
+        GENERAL or another country; destination must be COUNTRY and distinct. Fixes FIFO source
+        layer quantities. Both periods must be open. No stock is reserved; no physical or GL entry
+        is made. Unique reference and idempotency key prevent duplicate requests.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReallocationInput'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  reallocation:
+                    $ref: '#/components/schemas/Reallocation'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - reallocation
+                  - requestId
+        default:
+          description: >-
+            400 validation/idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            independent reviewer or requester required; 404 inaccessible reference; 409 invalid
+            state, duplicate reference, idempotency conflict, inactive reference, closed period,
+            insufficient eligible stock or movement effect; 422 quantity precision, period or
+            destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reallocations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read a reallocation request
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: 'Requires workspace.read and inventory.read, in an assigned entity. '
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  reallocation:
+                    $ref: '#/components/schemas/Reallocation'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - reallocation
+                  - requestId
+        default:
+          description: >-
+            400 validation/idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            independent reviewer or requester required; 404 inaccessible reference; 409 invalid
+            state, duplicate reference, idempotency conflict, inactive reference, closed period,
+            insufficient eligible stock or movement effect; 422 quantity precision, period or
+            destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reallocations/{id}/lines:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read planned source layers
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.read, in an assigned entity. Fixed layer quantities;
+        value is null until execution. No line-count business cap; reads are paginated.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ReallocationLine'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 validation/idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            independent reviewer or requester required; 404 inaccessible reference; 409 invalid
+            state, duplicate reference, idempotency conflict, inactive reference, closed period,
+            insufficient eligible stock or movement effect; 422 quantity precision, period or
+            destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reallocations/{id}/approve:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Approve reallocation
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.reallocation.review, in an assigned entity. REQUESTED
+        only. Another authorized user must approve a COUNTRY source; GENERAL permits the same
+        authorized requester. Approval rechecks active references and both open periods.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                reason:
+                  type: string
+                  maxLength: 255
+                  minLength: 1
+              required:
+                - reason
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  reallocation:
+                    $ref: '#/components/schemas/Reallocation'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - reallocation
+                  - requestId
+        default:
+          description: >-
+            400 validation/idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            independent reviewer or requester required; 404 inaccessible reference; 409 invalid
+            state, duplicate reference, idempotency conflict, inactive reference, closed period,
+            insufficient eligible stock or movement effect; 422 quantity precision, period or
+            destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reallocations/{id}/reject:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Reject reallocation
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.reallocation.review, in an assigned entity. REQUESTED
+        only. Another authorized user must reject a COUNTRY source; GENERAL permits the same
+        authorized requester. Approval rechecks active references and both open periods.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                reason:
+                  type: string
+                  maxLength: 255
+                  minLength: 1
+              required:
+                - reason
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  reallocation:
+                    $ref: '#/components/schemas/Reallocation'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - reallocation
+                  - requestId
+        default:
+          description: >-
+            400 validation/idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            independent reviewer or requester required; 404 inaccessible reference; 409 invalid
+            state, duplicate reference, idempotency conflict, inactive reference, closed period,
+            insufficient eligible stock or movement effect; 422 quantity precision, period or
+            destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reallocations/{id}/execute:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Execute reallocation
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.reallocation.execute, in an assigned entity. APPROVED
+        only. Rechecks exact layers and both open periods under the entity lock. Equal/opposite
+        signed pool entries and projections, audit, state and retry result commit together. Full
+        depletion transfers residual carrying value. Physical/GL unchanged. Executed retries return
+        the original request. Only unreserved quantities can transfer. Cost uses the source pool
+        on-hand quantity as its denominator.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties: {}
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  reallocation:
+                    $ref: '#/components/schemas/Reallocation'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - reallocation
+                  - requestId
+        default:
+          description: >-
+            400 validation/idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            independent reviewer or requester required; 404 inaccessible reference; 409 invalid
+            state, duplicate reference, idempotency conflict, inactive reference, closed period,
+            insufficient eligible stock or movement effect; 422 quantity precision, period or
+            destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reallocations/{id}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Cancel reallocation
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.reallocation.request, in an assigned entity. Requester
+        only, REQUESTED or APPROVED. Reason and history retained.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                reason:
+                  type: string
+                  maxLength: 255
+                  minLength: 1
+              required:
+                - reason
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  reallocation:
+                    $ref: '#/components/schemas/Reallocation'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - reallocation
+                  - requestId
+        default:
+          description: >-
+            400 validation/idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            independent reviewer or requester required; 404 inaccessible reference; 409 invalid
+            state, duplicate reference, idempotency conflict, inactive reference, closed period,
+            insufficient eligible stock or movement effect; 422 quantity precision, period or
+            destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reservations:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      summary: List reservations
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.read in an assigned entity. Paged immutable
+        reservation history.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - ACTIVE
+              - CLOSED
+              - CANCELLED
+        - name: warehouseId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryReservation'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, duplicate action line or idempotency key; 401 unauthenticated; 403
+            scope, permission, Origin or CSRF; 404 inaccessible record; 409 invalid state,
+            duplicate/source conflict, idempotency conflict, inactive reference, closed period,
+            insufficient stock or reservation exceeded; 422 quantity precision, invalid
+            date/period/destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Reserve stock for multiple SKU lines
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.reservation.manage in an assigned entity. Fixes exact
+        pool/source layers. Destination COUNTRY first, then GENERAL, FIFO within each. Repeated SKUs
+        are separate lines. Both calendars must be open. No fixed document-line cap; 1 MiB request
+        guard. Atomic stock protection, audit and idempotency; no on-hand or GL change.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryReservationInput'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  reservation:
+                    $ref: '#/components/schemas/InventoryReservation'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - reservation
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, duplicate action line or idempotency key; 401 unauthenticated; 403
+            scope, permission, Origin or CSRF; 404 inaccessible record; 409 invalid state,
+            duplicate/source conflict, idempotency conflict, inactive reference, closed period,
+            insufficient stock or reservation exceeded; 422 quantity precision, invalid
+            date/period/destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reservations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read a reservation
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: 'Requires workspace.read and inventory.read in an assigned entity. '
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  reservation:
+                    $ref: '#/components/schemas/InventoryReservation'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - reservation
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, duplicate action line or idempotency key; 401 unauthenticated; 403
+            scope, permission, Origin or CSRF; 404 inaccessible record; 409 invalid state,
+            duplicate/source conflict, idempotency conflict, inactive reference, closed period,
+            insufficient stock or reservation exceeded; 422 quantity precision, invalid
+            date/period/destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reservations/{id}/lines:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read reservation document lines
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.read in an assigned entity. Requested, released,
+        issued and outstanding quantities by document line.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryReservationLine'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, duplicate action line or idempotency key; 401 unauthenticated; 403
+            scope, permission, Origin or CSRF; 404 inaccessible record; 409 invalid state,
+            duplicate/source conflict, idempotency conflict, inactive reference, closed period,
+            insufficient stock or reservation exceeded; 422 quantity precision, invalid
+            date/period/destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reservations/{id}/allocations:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read reserved source layers
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.read in an assigned entity. Fixed allocation
+        identities retain receipt provenance through partial release and dispatch.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryReservationAllocation'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, duplicate action line or idempotency key; 401 unauthenticated; 403
+            scope, permission, Origin or CSRF; 404 inaccessible record; 409 invalid state,
+            duplicate/source conflict, idempotency conflict, inactive reference, closed period,
+            insufficient stock or reservation exceeded; 422 quantity precision, invalid
+            date/period/destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reservations/{id}/releases:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read reservation release history
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.read in an assigned entity. Immutable partial releases
+        and cancellation records.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryReservationRelease'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, duplicate action line or idempotency key; 401 unauthenticated; 403
+            scope, permission, Origin or CSRF; 404 inaccessible record; 409 invalid state,
+            duplicate/source conflict, idempotency conflict, inactive reference, closed period,
+            insufficient stock or reservation exceeded; 422 quantity precision, invalid
+            date/period/destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reservation-releases/{id}/lines:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read release source allocations
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: 'Requires workspace.read and inventory.read in an assigned entity. '
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryReservationReleaseLine'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, duplicate action line or idempotency key; 401 unauthenticated; 403
+            scope, permission, Origin or CSRF; 404 inaccessible record; 409 invalid state,
+            duplicate/source conflict, idempotency conflict, inactive reference, closed period,
+            insufficient stock or reservation exceeded; 422 quantity precision, invalid
+            date/period/destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reservations/{id}/release:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Release selected reserved quantities
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.reservation.manage in an assigned entity. ACTIVE only.
+        Releases later allocations first, preserving earlier FIFO stock. On-hand remains unchanged.
+        Allowed after period closure; a full release closes the reservation.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryReservationReleaseInput'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  reservation:
+                    $ref: '#/components/schemas/InventoryReservation'
+                  releaseId:
+                    type: string
+                    format: uuid
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - reservation
+                  - releaseId
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, duplicate action line or idempotency key; 401 unauthenticated; 403
+            scope, permission, Origin or CSRF; 404 inaccessible record; 409 invalid state,
+            duplicate/source conflict, idempotency conflict, inactive reference, closed period,
+            insufficient stock or reservation exceeded; 422 quantity precision, invalid
+            date/period/destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reservations/{id}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Cancel the outstanding reservation
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.reservation.manage in an assigned entity. ACTIVE only.
+        Releases all remaining unissued quantities and marks CANCELLED. Already posted dispatches
+        remain unchanged. Allowed after period closure.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryReservationCancelInput'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  reservation:
+                    $ref: '#/components/schemas/InventoryReservation'
+                  releaseId:
+                    type: string
+                    format: uuid
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - reservation
+                  - releaseId
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, duplicate action line or idempotency key; 401 unauthenticated; 403
+            scope, permission, Origin or CSRF; 404 inaccessible record; 409 invalid state,
+            duplicate/source conflict, idempotency conflict, inactive reference, closed period,
+            insufficient stock or reservation exceeded; 422 quantity precision, invalid
+            date/period/destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reservations/{id}/issues:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Post a physical dispatch
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.issue.post in an assigned entity. Consumes only this
+        ACTIVE reservation's fixed allocations, FIFO within each selected line. Requires an active
+        ISSUE movement and both posting calendars open. Dispatch/posting dates cannot precede
+        reservation; posting cannot predate a source layer's latest pool movement. Negative
+        physical/pool ledger entries, balances, allocation counters, audit and retry result commit
+        atomically. Full depletion consumes residual carrying value. Same dispatch reference and
+        content replay even with a new key; changed content conflicts. Records quantity and stock
+        cost only: no GL, VAT, invoice, ownership-transfer or customs event.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryIssueInput'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  issue:
+                    $ref: '#/components/schemas/InventoryIssue'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - issue
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, duplicate action line or idempotency key; 401 unauthenticated; 403
+            scope, permission, Origin or CSRF; 404 inaccessible record; 409 invalid state,
+            duplicate/source conflict, idempotency conflict, inactive reference, closed period,
+            insufficient stock or reservation exceeded; 422 quantity precision, invalid
+            date/period/destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/issues:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      summary: List posted dispatches
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: 'Requires workspace.read and inventory.read in an assigned entity. '
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: reservationId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryIssue'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, duplicate action line or idempotency key; 401 unauthenticated; 403
+            scope, permission, Origin or CSRF; 404 inaccessible record; 409 invalid state,
+            duplicate/source conflict, idempotency conflict, inactive reference, closed period,
+            insufficient stock or reservation exceeded; 422 quantity precision, invalid
+            date/period/destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/issues/{id}:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read a posted dispatch
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: 'Requires workspace.read and inventory.read in an assigned entity. '
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  issue:
+                    $ref: '#/components/schemas/InventoryIssue'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - issue
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, duplicate action line or idempotency key; 401 unauthenticated; 403
+            scope, permission, Origin or CSRF; 404 inaccessible record; 409 invalid state,
+            duplicate/source conflict, idempotency conflict, inactive reference, closed period,
+            insufficient stock or reservation exceeded; 422 quantity precision, invalid
+            date/period/destination; 413 payload too large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/issues/{id}/lines:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read dispatch source consumption
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.read in an assigned entity. Exact quantities and cost
+        consumed from reservation allocations and original receipt lines.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryIssueLine'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields, duplicate action line or idempotency key; 401 unauthenticated; 403
+            scope, permission, Origin or CSRF; 404 inaccessible record; 409 invalid state,
+            duplicate/source conflict, idempotency conflict, inactive reference, closed period,
+            insufficient stock or reservation exceeded; 422 quantity precision, invalid
+            date/period/destination; 413 payload too large; 500 sanitized failure.
           content:
             application/json:
               schema:
@@ -7090,12 +8501,10 @@ components:
           format: uuid
         quantity:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
-          example: '100.000000'
+          pattern: ^-?(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
         value:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
-          example: '100.000000'
+          pattern: ^-?(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
         unitCost:
           type: string
           pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
@@ -7118,6 +8527,31 @@ components:
         eventId:
           type: string
           format: uuid
+        eventKind:
+          type: string
+          enum:
+            - RECEIPT
+            - ISSUE
+        reallocationId:
+          type: string
+          format: uuid
+          nullable: true
+        reallocationReference:
+          type: string
+          maxLength: 64
+          nullable: true
+        postingDate:
+          type: string
+          format: date
+        issueId:
+          type: string
+          format: uuid
+          nullable: true
+        issueReference:
+          type: string
+          maxLength: 64
+          pattern: ^[A-Za-z0-9._:-]+$
+          nullable: true
       required:
         - id
         - warehouseId
@@ -7135,6 +8569,12 @@ components:
         - sourceId
         - sourceLineKey
         - eventId
+        - eventKind
+        - reallocationId
+        - reallocationReference
+        - postingDate
+        - issueId
+        - issueReference
     PoolStockEntry:
       type: object
       additionalProperties: false
@@ -7162,12 +8602,10 @@ components:
           format: uuid
         quantity:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
-          example: '100.000000'
+          pattern: ^-?(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
         value:
           type: string
-          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
-          example: '100.000000'
+          pattern: ^-?(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
         unitCost:
           type: string
           pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
@@ -7196,6 +8634,32 @@ components:
         poolCode:
           type: string
           maxLength: 40
+        eventKind:
+          type: string
+          enum:
+            - RECEIPT
+            - REALLOCATION
+            - ISSUE
+        reallocationId:
+          type: string
+          format: uuid
+          nullable: true
+        reallocationReference:
+          type: string
+          maxLength: 64
+          nullable: true
+        postingDate:
+          type: string
+          format: date
+        issueId:
+          type: string
+          format: uuid
+          nullable: true
+        issueReference:
+          type: string
+          maxLength: 64
+          pattern: ^[A-Za-z0-9._:-]+$
+          nullable: true
       required:
         - id
         - warehouseId
@@ -7215,6 +8679,12 @@ components:
         - eventId
         - poolId
         - poolCode
+        - eventKind
+        - reallocationId
+        - reallocationReference
+        - postingDate
+        - issueId
+        - issueReference
     PoolStockBalance:
       type: object
       additionalProperties: false
@@ -7273,6 +8743,12 @@ components:
         poolCode:
           type: string
           maxLength: 40
+        reservedQuantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        availableQuantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
       required:
         - id
         - warehouseId
@@ -7291,6 +8767,854 @@ components:
         - sourceLineKey
         - poolId
         - poolCode
+        - reservedQuantity
+        - availableQuantity
+    ReallocationInput:
+      type: object
+      additionalProperties: false
+      properties:
+        reference:
+          type: string
+          maxLength: 64
+          pattern: ^[A-Za-z0-9._:-]+$
+        warehouseId:
+          type: string
+          format: uuid
+        skuId:
+          type: string
+          format: uuid
+        toPoolId:
+          type: string
+          format: uuid
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        postingDate:
+          type: string
+          format: date
+        fromPoolId:
+          type: string
+          format: uuid
+        movementTypeId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          maxLength: 255
+          minLength: 1
+      required:
+        - reference
+        - warehouseId
+        - skuId
+        - toPoolId
+        - quantity
+        - postingDate
+        - fromPoolId
+        - movementTypeId
+        - reason
+    Reallocation:
+      type: object
+      additionalProperties: false
+      properties:
+        reference:
+          type: string
+          maxLength: 64
+          pattern: ^[A-Za-z0-9._:-]+$
+        warehouseId:
+          type: string
+          format: uuid
+        skuId:
+          type: string
+          format: uuid
+        toPoolId:
+          type: string
+          format: uuid
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        postingDate:
+          type: string
+          format: date
+        fromPoolId:
+          type: string
+          format: uuid
+        movementTypeId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          maxLength: 255
+          minLength: 1
+        id:
+          type: string
+          format: uuid
+        warehouseCode:
+          type: string
+          maxLength: 40
+        skuCode:
+          type: string
+          maxLength: 40
+        fromPoolCode:
+          type: string
+          maxLength: 40
+        toPoolCode:
+          type: string
+          maxLength: 40
+        periodId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - REQUESTED
+            - APPROVED
+            - REJECTED
+            - CANCELLED
+            - EXECUTED
+        requiresIndependent:
+          type: boolean
+        requestedBy:
+          type: string
+          format: uuid
+        requestedAt:
+          type: string
+          format: date-time
+          nullable: false
+        reviewedBy:
+          type: string
+          format: uuid
+          nullable: true
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        reviewReason:
+          type: string
+          maxLength: 255
+          nullable: true
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelReason:
+          type: string
+          maxLength: 255
+          nullable: true
+        executedBy:
+          type: string
+          format: uuid
+          nullable: true
+        executedAt:
+          type: string
+          format: date-time
+          nullable: true
+        totalValue:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          nullable: true
+        requestedByName:
+          type: string
+          maxLength: 160
+        reviewedByName:
+          type: string
+          maxLength: 160
+          nullable: true
+        executedByName:
+          type: string
+          maxLength: 160
+          nullable: true
+      required:
+        - reference
+        - warehouseId
+        - skuId
+        - toPoolId
+        - quantity
+        - postingDate
+        - fromPoolId
+        - movementTypeId
+        - reason
+        - id
+        - warehouseCode
+        - skuCode
+        - fromPoolCode
+        - toPoolCode
+        - periodId
+        - status
+        - requiresIndependent
+        - requestedBy
+        - requestedAt
+        - reviewedBy
+        - reviewedAt
+        - reviewReason
+        - cancelledAt
+        - cancelReason
+        - executedBy
+        - executedAt
+        - totalValue
+        - requestedByName
+        - reviewedByName
+        - executedByName
+    ReallocationLine:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        lineNumber:
+          type: integer
+        layerId:
+          type: string
+          format: uuid
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          nullable: true
+        receivedDate:
+          type: string
+          format: date
+        sourceId:
+          type: string
+          maxLength: 128
+        receiptId:
+          type: string
+          format: uuid
+        currency:
+          type: string
+          maxLength: 3
+      required:
+        - id
+        - lineNumber
+        - layerId
+        - quantity
+        - value
+        - receivedDate
+        - sourceId
+        - receiptId
+        - currency
+    AllocationPreview:
+      type: object
+      additionalProperties: false
+      properties:
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        destinationQuantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        generalQuantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        shortfall:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        generalPoolId:
+          type: string
+          format: uuid
+          nullable: true
+        requestId:
+          type: string
+          maxLength: 128
+      required:
+        - quantity
+        - destinationQuantity
+        - generalQuantity
+        - shortfall
+        - generalPoolId
+        - requestId
+    InventorySkuChoice:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          maxLength: 40
+        name:
+          type: string
+          maxLength: 160
+        active:
+          type: boolean
+        unitCode:
+          type: string
+          maxLength: 40
+        quantityPrecision:
+          type: integer
+          minimum: 0
+          maximum: 6
+      required:
+        - id
+        - code
+        - name
+        - active
+        - unitCode
+        - quantityPrecision
+    InventoryReservationInput:
+      type: object
+      additionalProperties: false
+      properties:
+        reference:
+          type: string
+          maxLength: 64
+          pattern: ^[A-Za-z0-9._:-]+$
+        warehouseId:
+          type: string
+          format: uuid
+        destinationPoolId:
+          type: string
+          format: uuid
+        reservationDate:
+          type: string
+          format: date
+        reason:
+          type: string
+          maxLength: 255
+          minLength: 1
+        lines:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              skuId:
+                type: string
+                format: uuid
+              quantity:
+                type: string
+                pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+                description: Positive exact decimal string; must respect SKU base-unit precision.
+            required:
+              - skuId
+              - quantity
+      required:
+        - reference
+        - warehouseId
+        - destinationPoolId
+        - reservationDate
+        - reason
+        - lines
+    InventoryReservation:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        reference:
+          type: string
+          maxLength: 64
+          pattern: ^[A-Za-z0-9._:-]+$
+        warehouseId:
+          type: string
+          format: uuid
+        warehouseCode:
+          type: string
+          maxLength: 40
+        destinationPoolId:
+          type: string
+          format: uuid
+        destinationPoolCode:
+          type: string
+          maxLength: 40
+        reservationDate:
+          type: string
+          format: date
+        periodId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          maxLength: 255
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - CLOSED
+            - CANCELLED
+        createdBy:
+          type: string
+          format: uuid
+        createdByName:
+          type: string
+          maxLength: 160
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - reference
+        - warehouseId
+        - warehouseCode
+        - destinationPoolId
+        - destinationPoolCode
+        - reservationDate
+        - periodId
+        - reason
+        - status
+        - createdBy
+        - createdByName
+        - createdAt
+    InventoryReservationLine:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        lineNumber:
+          type: integer
+        skuId:
+          type: string
+          format: uuid
+        skuCode:
+          type: string
+          maxLength: 40
+        unitCode:
+          type: string
+          maxLength: 40
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        releasedQuantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        issuedQuantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        reservedQuantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+      required:
+        - id
+        - lineNumber
+        - skuId
+        - skuCode
+        - unitCode
+        - quantity
+        - releasedQuantity
+        - issuedQuantity
+        - reservedQuantity
+    InventoryReservationAllocation:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        allocationNumber:
+          type: integer
+        reservationLineId:
+          type: string
+          format: uuid
+        lineNumber:
+          type: integer
+        layerId:
+          type: string
+          format: uuid
+        poolId:
+          type: string
+          format: uuid
+        poolCode:
+          type: string
+          maxLength: 40
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        releasedQuantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        issuedQuantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        reservedQuantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        receiptId:
+          type: string
+          format: uuid
+        sourceId:
+          type: string
+          maxLength: 128
+        sourceLineKey:
+          type: string
+          maxLength: 64
+        receivedDate:
+          type: string
+          format: date
+      required:
+        - id
+        - allocationNumber
+        - reservationLineId
+        - lineNumber
+        - layerId
+        - poolId
+        - poolCode
+        - quantity
+        - releasedQuantity
+        - issuedQuantity
+        - reservedQuantity
+        - receiptId
+        - sourceId
+        - sourceLineKey
+        - receivedDate
+    InventoryReservationReleaseInput:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 255
+          minLength: 1
+        lines:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              reservationLineId:
+                type: string
+                format: uuid
+              quantity:
+                type: string
+                pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+                description: Positive exact decimal string; must respect SKU base-unit precision.
+            required:
+              - reservationLineId
+              - quantity
+          description: >-
+            Select one quantity per distinct reservation line. No fixed line-count cap; the 1 MiB
+            JSON request guard applies.
+      required:
+        - reason
+        - lines
+    InventoryReservationCancelInput:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 255
+          minLength: 1
+      required:
+        - reason
+    InventoryReservationRelease:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum:
+            - RELEASE
+            - CANCEL
+        reason:
+          type: string
+          maxLength: 255
+          minLength: 1
+        createdAt:
+          type: string
+          format: date-time
+        createdByName:
+          type: string
+          maxLength: 160
+      required:
+        - id
+        - kind
+        - reason
+        - createdAt
+        - createdByName
+    InventoryReservationReleaseLine:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        allocationId:
+          type: string
+          format: uuid
+        reservationLineId:
+          type: string
+          format: uuid
+        layerId:
+          type: string
+          format: uuid
+        poolId:
+          type: string
+          format: uuid
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+      required:
+        - id
+        - allocationId
+        - reservationLineId
+        - layerId
+        - poolId
+        - quantity
+    InventoryIssueInput:
+      type: object
+      additionalProperties: false
+      properties:
+        reference:
+          type: string
+          maxLength: 64
+          pattern: ^[A-Za-z0-9._:-]+$
+        dispatchDate:
+          type: string
+          format: date
+        postingDate:
+          type: string
+          format: date
+        movementTypeId:
+          type: string
+          format: uuid
+        description:
+          type: string
+          maxLength: 255
+          minLength: 1
+        lines:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              reservationLineId:
+                type: string
+                format: uuid
+              quantity:
+                type: string
+                pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+                description: Positive exact decimal string; must respect SKU base-unit precision.
+            required:
+              - reservationLineId
+              - quantity
+          description: >-
+            Select one quantity per distinct reservation line. No fixed line-count cap; the 1 MiB
+            JSON request guard applies.
+      required:
+        - reference
+        - dispatchDate
+        - postingDate
+        - movementTypeId
+        - description
+        - lines
+    InventoryIssue:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        reference:
+          type: string
+          maxLength: 64
+          pattern: ^[A-Za-z0-9._:-]+$
+        reservationId:
+          type: string
+          format: uuid
+        reservationReference:
+          type: string
+          maxLength: 64
+          pattern: ^[A-Za-z0-9._:-]+$
+        dispatchDate:
+          type: string
+          format: date
+        postingDate:
+          type: string
+          format: date
+        periodId:
+          type: string
+          format: uuid
+        movementTypeId:
+          type: string
+          format: uuid
+        description:
+          type: string
+          maxLength: 255
+          minLength: 1
+        currency:
+          type: string
+          maxLength: 3
+        totalValue:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        status:
+          type: string
+          enum:
+            - POSTED
+        createdBy:
+          type: string
+          format: uuid
+        createdByName:
+          type: string
+          maxLength: 160
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - reference
+        - reservationId
+        - reservationReference
+        - dispatchDate
+        - postingDate
+        - periodId
+        - movementTypeId
+        - description
+        - currency
+        - totalValue
+        - status
+        - createdBy
+        - createdByName
+        - createdAt
+    InventoryIssueLine:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        lineNumber:
+          type: integer
+        allocationId:
+          type: string
+          format: uuid
+        reservationLineId:
+          type: string
+          format: uuid
+        skuId:
+          type: string
+          format: uuid
+        skuCode:
+          type: string
+          maxLength: 40
+        layerId:
+          type: string
+          format: uuid
+        poolId:
+          type: string
+          format: uuid
+        poolCode:
+          type: string
+          maxLength: 40
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        receiptId:
+          type: string
+          format: uuid
+        sourceId:
+          type: string
+          maxLength: 128
+        sourceLineKey:
+          type: string
+          maxLength: 64
+      required:
+        - id
+        - lineNumber
+        - allocationId
+        - reservationLineId
+        - skuId
+        - skuCode
+        - layerId
+        - poolId
+        - poolCode
+        - quantity
+        - value
+        - receiptId
+        - sourceId
+        - sourceLineKey
+    PhysicalStockBalance:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          maxLength: 128
+        warehouseId:
+          type: string
+          format: uuid
+        warehouseCode:
+          type: string
+          maxLength: 40
+        skuId:
+          type: string
+          format: uuid
+        skuCode:
+          type: string
+          maxLength: 40
+        unitCode:
+          type: string
+          maxLength: 40
+        layerId:
+          type: string
+          format: uuid
+        quantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        unitCost:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          example: '100.000000'
+        receivedDate:
+          type: string
+          format: date
+        currency:
+          type: string
+          maxLength: 3
+        receiptId:
+          type: string
+          format: uuid
+        sourceId:
+          type: string
+          maxLength: 128
+        sourceLineKey:
+          type: string
+          maxLength: 64
+        reservedQuantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        availableQuantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+      required:
+        - id
+        - warehouseId
+        - warehouseCode
+        - skuId
+        - skuCode
+        - unitCode
+        - layerId
+        - quantity
+        - value
+        - unitCost
+        - receivedDate
+        - currency
+        - receiptId
+        - sourceId
+        - sourceLineKey
+        - reservedQuantity
+        - availableQuantity
   responses:
     Profile:
       description: >-

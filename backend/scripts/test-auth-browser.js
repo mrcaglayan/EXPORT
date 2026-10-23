@@ -21,6 +21,11 @@ try {
   await query('INSERT INTO roles (id, tenant_id, code, name) VALUES (?, ?, ?, ?)', [inventoryReader, fixture.alpha.tenantId, 'INVENTORY_READER', 'Inventory reader']);
   for (const permission of ['workspace.read', 'organizations.read', 'settings.read', 'inventory.read']) await query('INSERT INTO role_permissions (tenant_id, role_id, permission_code) VALUES (?, ?, ?)', [fixture.alpha.tenantId, inventoryReader, permission]);
   await query('INSERT INTO user_role_assignments (tenant_id, user_id, role_id, legal_entity_id) VALUES (?, ?, ?, ?)', [fixture.alpha.tenantId, fixture.noAccess, inventoryReader, fixture.secondEntity]);
+  const reviewer = randomUUID(), reviewerRole = randomUUID();
+  await query(`INSERT INTO users (id,tenant_id,email,display_name,password_hash) SELECT ?,tenant_id,'reviewer@alpha.test','Inventory reviewer',password_hash FROM users WHERE id = ?`, [reviewer,fixture.alpha.userId]);
+  await query('INSERT INTO roles (id,tenant_id,code,name) VALUES (?,?,?,?)', [reviewerRole,fixture.alpha.tenantId,'INVENTORY_REVIEWER','Inventory reviewer']);
+  for (const permission of ['workspace.read','organizations.read','settings.read','inventory.read','inventory.reallocation.review']) await query('INSERT INTO role_permissions (tenant_id,role_id,permission_code) VALUES (?,?,?)', [fixture.alpha.tenantId,reviewerRole,permission]);
+  await query('INSERT INTO user_role_assignments (tenant_id,user_id,role_id,legal_entity_id) VALUES (?,?,?,?)', [fixture.alpha.tenantId,reviewer,reviewerRole,fixture.secondEntity]);
   // Both servers are owned by this test run and use the disposable test DB.
   server = createApp({ config: getServerConfig({ NODE_ENV: 'test', CORS_ORIGIN: 'http://127.0.0.1:5184' }) }).listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -40,6 +45,7 @@ try {
       SMOKE_EMAIL: 'admin@alpha.test', SMOKE_PASSWORD: fixture.password,
       SMOKE_SECOND_ENTITY: fixture.secondEntity, SMOKE_VIEWER_EMAIL: 'viewer@alpha.test',
       SMOKE_INVENTORY_READER_EMAIL: 'none@alpha.test',
+      SMOKE_INVENTORY_REVIEWER_EMAIL: 'reviewer@alpha.test',
       SMOKE_ISOLATED: '1' },
   });
   process.exitCode = await new Promise((resolve, reject) => {

@@ -1,12 +1,12 @@
 # Coding-Agent PR Execution Instructions — Export Accounting Application
 
-Use this alongside `EXPORT_IMPLEMENTATION_ROADMAP.md` and the **new, user-authorized 21 October baseline** `PR01_PR02_database_specification.md` / `PR01_PR02_schema.sql`. Authoritative copies are tracked in `export-accounting/docs/design/`. The original referenced inputs were never supplied; the new baseline is not presented as a recovered original. Baseline v5 implements PR-01A/PR-01B/PR-02A/PR-02B; later inventory contracts remain planned.
+Use this alongside `EXPORT_IMPLEMENTATION_ROADMAP.md` and the **new, user-authorized 21 October baseline** `PR01_PR02_database_specification.md` / `PR01_PR02_schema.sql`. Authoritative copies are tracked in `export-accounting/docs/design/`. The original referenced inputs were never supplied; the new baseline is not presented as a recovered original. Baseline v7 implements PR-01A/PR-01B/PR-02A/PR-02B/PR-02C/PR-02D; later inventory contracts remain planned.
 
 ## Overall coding contract
 
-**Current status (22 October 2026):** PR-00AA through PR-00C, PR-01A through PR-01C and PR-02A/PR-02B are implemented.
-Next is PR-02C — destination allocation and approved pool borrowing.
-See `docs/pr-handoffs/PR-02B.md` from the repository root. Earlier task briefs below remain the historical scope
+**Current status (23 October 2026):** PR-00AA through PR-00C, PR-01A through PR-01C and PR-02A/PR-02B/PR-02C/PR-02D are implemented.
+Next is PR-02E — stock trial balance, month-end snapshots and close.
+See `docs/pr-handoffs/PR-02D.md` from the repository root. Earlier task briefs below remain the historical scope
 definitions; do not recreate or reinstall the existing scaffold.
 
 You are building a **NEW standalone Export Accounting application** using `SaaP-main.zip` only as a technology and coding-style reference. Use Node.js ES modules + Express 5 + `mysql2/promise` + MySQL 8 + React 19 + Vite 7 + Tailwind 4 + shadcn/Radix + React Router 7 + Axios. Keep backend and frontend as separate npm projects. Use camelCase JSON, snake_case DB, `/api/v1`, SaaP-style JavaScript migrations and `schema_migrations`, service/route/validator separation, permission-scoped routes, OpenAPI, and PR-specific test scripts. Use environment-only secrets. NEVER import production data from the historical `Ortak Malzeme.xlsx` reference. A country pool is a virtual allocation in one physical warehouse. Prevent negative stock and duplicate postings transactionally. Do not implement later modules early.
@@ -96,7 +96,7 @@ are keyed by warehouse as well as pool. Refine the v4 baseline in a new migratio
 
 Implemented through m007. Preserve m001–m007. The fixture-only receipt executor
 and read screens are described in docs/architecture/inventory-receipts.md; baseline
-v5 includes all tables/triggers. Use test:pr02b, test:pr02a and the prior regression
+v6 includes the evolved tables/triggers. Use test:pr02b, test:pr02a and the prior regression
 gate; test:pr02b:browser includes the shared browser workflow. The local company
 remains empty of stock. Real purchase-source posting is still PR-03.
 
@@ -104,9 +104,14 @@ remains empty of stock. Real purchase-source posting is still PR-03.
 
 Build country-first/general-second selection, approved borrowing request and execution for another destination pool, and maker-checker restrictions. Reallocations post equal/opposite pool ledger lines only (no physical stock change and no GL entry). Test cross-country approval, partial borrowing, unavailable balances and concurrent requests. Extend m007 receipt-only event provenance and pool insert/projection guards in a forward migration; preserve receipt reconciliation and original allocations.
 
+PR-02C is complete in m008. See `docs/architecture/inventory-reallocations.md` for fixed plans, unreserved pending requests, carrying-value rounding, date eligibility and verification handoff.
+
 ## PR-02D task brief
 
-Build warehouse/SKU/source-layer/pool reservations with FIFO selection, no-negative-stock and quantity conservation. Export dispatch consumes both physical and allocated quantity and stores the exact source layer for future VAT. Test conflicting reservations and concurrent dispatch attempts. Do not calculate refundable VAT yet.
+PR-02D is complete in m009. See `docs/architecture/inventory-reservations.md`. Next is PR-02E; preserve applied m001–m009. Dispatch records consumed stock cost; automatic GL posting awaits an approved event/account policy.
+
+
+Build warehouse/SKU/source-layer/pool reservations with FIFO selection, no-negative-stock and quantity conservation. Export dispatch consumes both physical and allocated quantity and stores the exact source layer for future VAT. Test conflicting reservations and concurrent dispatch attempts. Subtract active reservations from allocation preview and transfer execution. Extend m008 event/physical-ledger guards in a forward migration while verifying the complete retained schema. Pending reallocation requests are not reservations. Do not calculate refundable VAT yet.
 
 ## PR-02E task brief
 

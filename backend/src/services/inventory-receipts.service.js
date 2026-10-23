@@ -6,6 +6,7 @@ import { entityId } from '../validators/auth.validators.js';
 import { receipt, filters } from '../validators/receipts.validators.js';
 import { scopeArgs, authorize, entityWrite, audit, notFound } from './entity-context.js';
 import { settings } from './accounting-context.js';
+import { micro, decimal } from './inventory-stock.js';
 
 // No client-controlled source bypass. PR-03 must introduce an authorized purchasing
 // adapter before real receipt posting. The harness verifies the owned MySQL datadir.
@@ -62,20 +63,25 @@ export async function list(context, kind, input) {
       JOIN warehouses w ON w.tenant_id = r.tenant_id AND w.legal_entity_id = r.legal_entity_id AND w.id = r.warehouse_id
       JOIN product_skus s ON s.tenant_id = r.tenant_id AND s.legal_entity_id = r.legal_entity_id AND s.id = r.sku_id
       JOIN unit_of_measure u ON u.tenant_id = s.tenant_id AND u.legal_entity_id = s.legal_entity_id AND u.id = s.base_unit_id
+      ${ledger ? 'JOIN inventory_events e ON e.tenant_id = r.tenant_id AND e.legal_entity_id = r.legal_entity_id AND e.id = r.event_id LEFT JOIN inventory_reallocations a ON a.tenant_id = e.tenant_id AND a.legal_entity_id = e.legal_entity_id AND a.id = e.reallocation_id LEFT JOIN inventory_issues d ON d.tenant_id = e.tenant_id AND d.legal_entity_id = e.legal_entity_id AND d.id = e.issue_id' : ''}
       ${pool ? 'JOIN inventory_pools p ON p.tenant_id = r.tenant_id AND p.legal_entity_id = r.legal_entity_id AND p.id = r.pool_id' : ''}`;
     fields = `${layer || ledger ? 'r.id' : pool ? "CONCAT(r.layer_id, ':', r.pool_id) AS id" : 'r.layer_id AS id'},
       r.warehouse_id AS warehouseId, w.code AS warehouseCode, r.sku_id AS skuId, s.code AS skuCode, u.code AS unitCode,
       ${layer ? 'r.id' : 'r.layer_id'} AS layerId, r.quantity, r.value, ${layer ? 'r' : 'x'}.unit_cost AS unitCost,
       ${layer ? 'r' : 'x'}.received_date AS receivedDate, h.currency, h.id AS receiptId, h.source_id AS sourceId, l.source_line_key AS sourceLineKey
-      ${pool ? ', r.pool_id AS poolId, p.code AS poolCode' : ''}${ledger ? ', r.event_id AS eventId' : ''}`;
+      ${pool ? ', r.pool_id AS poolId, p.code AS poolCode' : ''}${ledger ? ', r.event_id AS eventId, e.kind AS eventKind, e.reallocation_id AS reallocationId, a.reference AS reallocationReference, e.issue_id AS issueId, d.reference AS issueReference, COALESCE(d.posting_date,a.posting_date,h.posting_date) AS postingDate' : ''}`;
+    if (kind.endsWith('balances')) fields += `, COALESCE((SELECT SUM(v.quantity-v.released_quantity-v.issued_quantity) FROM inventory_reservation_allocations v
+      JOIN inventory_reservations z ON z.tenant_id = v.tenant_id AND z.legal_entity_id = v.legal_entity_id AND z.id = v.reservation_id
+      WHERE v.tenant_id = r.tenant_id AND v.legal_entity_id = r.legal_entity_id AND v.layer_id = r.layer_id ${pool ? 'AND v.pool_id = r.pool_id' : ''} AND z.status = 'ACTIVE'),0) AS reservedQuantity`;
     where = "r.tenant_id = ? AND r.legal_entity_id = ? AND h.status = 'POSTED'";
     // Stable FIFO provenance order; no consumption or reservations in PR-02B.
     order = `${layer ? 'r' : 'x'}.received_date, ${layer ? 'r' : 'x'}.created_at, ${layer ? 'r' : 'x'}.id${pool ? ', r.pool_id' : ''}`;
+    if (ledger) order += ', e.created_at, e.id, r.id';
   }
   for (const [key, column] of [['warehouseId', 'warehouse_id'], ['skuId', 'sku_id'], ['poolId', 'pool_id']]) if (page[key]) { where += ` AND r.${column} = ?`; args.push(page[key]); }
   const { rows: count } = await query(`SELECT COUNT(*) AS total FROM ${from} WHERE ${where}`, args);
   const { rows } = await query(`SELECT ${fields} FROM ${from} WHERE ${where} ORDER BY ${order} LIMIT ${page.limit} OFFSET ${page.offset}`, args);
-  return { items: rows, total: count[0].total, limit: page.limit, offset: page.offset };
+  return { items: rows.map(row => kind.endsWith('balances') ? { ...row, availableQuantity: decimal(micro(row.quantity)-micro(row.reservedQuantity)) } : row), total: count[0].total, limit: page.limit, offset: page.offset };
 }
 async function activeRows(tx, context, table, ids, fields = '') {
   const rows = [];

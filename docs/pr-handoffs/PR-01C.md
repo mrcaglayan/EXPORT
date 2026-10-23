@@ -1,7 +1,7 @@
 # PR-01C handoff — Product UX and release gate
 
-**Current status — 22 October 2026:** PR-02B is implemented; see the
-[PR-02B handoff](PR-02B.md). PR-02C is next. The dated results and next-step
+**Current status — 23 October 2026:** PR-02D is implemented; see the
+[PR-02D handoff](PR-02D.md). PR-02E is next. The dated results and next-step
 statements below describe the PR-01C delivery.
 
 Completed **22 October 2026 (Europe/Istanbul)**. Next is **PR-02A: physical

@@ -8,6 +8,8 @@ import { checkClassification } from './product-classification-smoke.mjs'
 import { checkProductUx } from './product-ux-smoke.mjs'
 import { checkInventory } from './inventory-smoke.mjs'
 import { checkReceipts } from './receipts-smoke.mjs'
+import { checkReallocations } from './reallocations-smoke.mjs'
+import { checkReservations } from './reservations-smoke.mjs'
 
 const browser = await chromium.launch({
   ...(process.env.BROWSER_PATH
@@ -77,6 +79,8 @@ try {
     await checkAccounting(page, base, artifacts)
     await checkInventory(page, base, artifacts)
     await checkReceipts(page, base, artifacts)
+    await checkReallocations(page, base, artifacts, browser)
+    await checkReservations(page, base, artifacts)
     await page.goto(base)
   }
   await page.getByRole('link', { name: 'Explore products', exact: true }).click()
@@ -196,10 +200,23 @@ try {
     await page.getByRole('button', { name: 'View receipt BROWSER-RECEIPT', exact: true }).click()
     await page.getByRole('heading', { name: 'Receipt BROWSER-RECEIPT', exact: true }).waitFor()
     assert.equal(await page.getByRole('button', { name: /Post receipt|Add receipt|Delete receipt/ }).count(), 0)
+    await page.getByRole('tab', { name: 'Allocation & borrowing', exact: true }).click()
+    await page.getByRole('button', { name: 'View request BROWSER-BORROW', exact: true }).click()
+    await page.getByRole('heading', { name: 'Request BROWSER-BORROW', exact: true }).waitFor()
+    assert.equal(await page.getByRole('button', { name: /Approve request|Reject request|Cancel request|Execute transfer/ }).count(), 0)
+    await page.getByRole('tab', { name: 'Reservations', exact: true }).click()
+    await page.getByLabel('Reservation status', { exact: true }).selectOption('')
+    await page.getByRole('button', { name: 'View reservation BROWSER-RESERVE', exact: true }).click()
+    await page.getByRole('heading', { name: 'Reservation BROWSER-RESERVE', exact: true }).waitFor()
+    assert.equal(await page.getByRole('button', { name: /New reservation|Post dispatch|Release selected quantities|Cancel remaining reservation/ }).count(), 0)
+    assert.equal(await page.getByLabel('Reservation action', { exact: true }).count(), 0)
+    await page.getByRole('tab', { name: 'Dispatches', exact: true }).click()
+    await page.getByRole('button', { name: 'View dispatch BROWSER-DISPATCH', exact: true }).click()
+    await page.getByRole('heading', { name: 'Dispatch BROWSER-DISPATCH', exact: true }).waitFor()
     await page.getByRole('button', { name: 'Open navigation' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Sign out', exact: true }).click()
     await page.getByRole('heading', { name: 'Sign in', exact: true }).waitFor()
-    console.log('PASS: inventory reader can view metadata and receipt provenance with no posting, configuration or audit controls.')
+    console.log('PASS: inventory reader can view metadata, receipt provenance, reservations and dispatches with no posting, configuration or audit controls.')
   }
   assert.deepEqual(failures, [])
   console.log('PASS: login errors/success, protected return route, seven routes, request IDs, readiness states, mobile account controls, logout and browser runtime; isolated mode also tests entity switching, scoped editing and viewer access.')

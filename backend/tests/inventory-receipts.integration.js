@@ -46,7 +46,7 @@ test('PR-02B receipt sources, exact layers, immutable ledgers and atomic project
   await t.test('forward upgrade preserves prior data/history and grants ADMIN only', async () => {
     assert.deepEqual((await query(`SELECT * FROM schema_migrations WHERE migration_key IN (${history.map(() => '?').join(',')}) ORDER BY migration_key`, history.map(row => row.migration_key))).rows, history);
     assert.deepEqual((await query('SELECT * FROM warehouses')).rows, oldWarehouse);
-    assert.equal((await query('SHOW TABLES')).rows.length, 41);
+    assert.equal((await query('SHOW TABLES')).rows.length, 50);
     assert.ok(Object.values(await counts()).every(n => n === 0));
     assert.ok((await permissionsFor(ctx().identity, ctx().entityId)).includes('inventory.receipt.post'));
     assert.ok(!(await permissionsFor(ctx(f.secondEntity, f.viewer).identity, f.secondEntity)).includes('inventory.receipt.post'));
@@ -140,7 +140,7 @@ test('PR-02B receipt sources, exact layers, immutable ledgers and atomic project
       await connection.execute(`INSERT INTO stock_receipts (id, tenant_id, legal_entity_id, source_kind, source_id, payload_hash, document_date, posting_date, period_id, warehouse_id, movement_type_id, currency, description, total_value, created_by)
         SELECT ?, tenant_id, legal_entity_id, source_kind, ?, payload_hash, document_date, posting_date, period_id, warehouse_id, movement_type_id, currency, description, total_value, created_by FROM stock_receipts WHERE id = ?`, [id, randomUUID(), first.id]);
       await assert.rejects(connection.execute("UPDATE stock_receipts SET status = 'POSTED' WHERE id = ?", [id]), { code: 'ER_SIGNAL_EXCEPTION' });
-      await assert.rejects(connection.execute('UPDATE inventory_balances SET quantity = -1 LIMIT 1'), { code: 'ER_CHECK_CONSTRAINT_VIOLATED' });
+      await assert.rejects(connection.execute('UPDATE inventory_balances SET quantity = -1 LIMIT 1'), error => ['ER_CHECK_CONSTRAINT_VIOLATED','ER_SIGNAL_EXCEPTION'].includes(error.code));
     } finally { await connection.rollback(); connection.release(); }
   });
   await t.test('failure at audit rolls back every stock table and retry record', async () => {
