@@ -1,7 +1,8 @@
 # PR-01A handoff — Product foundation and journal scaling
 
-**Current status — 23 October 2026:** PR-02D is implemented. See the [PR-02D handoff](PR-02D.md).
-The dated results below describe the PR-01A delivery; PR-02E is next.
+**Current status — 26 October 2026:** PR-02F and the inventory release gate are
+implemented; see the [PR-02F handoff](PR-02F.md). PR-03A is next. The dated results
+below describe the PR-01A delivery and its original next-step context.
 
 Implemented **21 October 2026 (Europe/Istanbul)** in the existing local app.
 Open **http://localhost:5173/products**. Next is **PR-01B — specifications,

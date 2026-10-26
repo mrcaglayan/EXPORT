@@ -5,6 +5,10 @@ import * as inventory from '../services/inventory-foundation.service.js';
 import * as receipts from '../services/inventory-receipts.service.js';
 import * as reallocations from '../services/inventory-reallocations.service.js';
 import * as reservations from '../services/inventory-reservations.service.js';
+import * as reports from '../services/inventory-report.service.js';
+import * as closing from '../services/inventory-close.service.js';
+import * as corrections from '../services/inventory-corrections.service.js';
+import * as movements from '../services/inventory-movements.service.js';
 
 export function inventoryRoutes() {
   const router = Router({ mergeParams: true });
@@ -13,6 +17,30 @@ export function inventoryRoutes() {
     next();
   });
   const respond = fn => async (req, res) => res.json({ ...await fn(req), requestId: req.requestId });
+  router.get('/movements', respond(req => movements.movements(req.inventory, req.query)));
+  router.get('/integrity', respond(req => movements.integrity(req.inventory)));
+  router.get('/corrections', respond(req => corrections.list(req.inventory, req.query)));
+  router.post('/corrections', csrfProtection, respond(req => corrections.create(req.inventory, req.body)));
+  router.get('/corrections/:id', respond(req => corrections.get(req.inventory, req.params.id)));
+  router.get('/corrections/:id/lines', respond(req => corrections.lines(req.inventory, req.params.id, req.query)));
+  for (const action of ['approve','reject','cancel','post']) router.post(`/corrections/:id/${action}`, csrfProtection, respond(req => corrections.act(req.inventory, req.params.id, action, req.body)));
+  router.get('/trial-balance', respond(req => reports.trialBalance(req.inventory, req.query)));
+  router.get('/trial-balance/movements', respond(req => reports.movements(req.inventory, req.query)));
+  router.get('/reconciliation', respond(req => reports.reconciliation(req.inventory, req.query)));
+  router.get('/reconciliation-accounts', respond(req => closing.getMapping(req.inventory, req.query)));
+  router.post('/reconciliation-accounts', csrfProtection, respond(req => closing.setMapping(req.inventory, req.body)));
+  router.get('/periods/:id/close-status', respond(req => closing.closeStatus(req.inventory, req.params.id)));
+  router.get('/periods/:id/snapshots', respond(req => closing.listSnapshots(req.inventory, req.params.id, req.query)));
+  router.post('/periods/:id/prepare-close', csrfProtection, respond(req => closing.prepare(req.inventory, req.params.id, req.body)));
+  router.get('/snapshots/:id', respond(req => closing.getSnapshot(req.inventory, req.params.id)));
+  router.get('/periods/:id/reopens', respond(req => closing.listReopens(req.inventory, req.params.id, req.query)));
+  router.post('/periods/:id/reopens', csrfProtection, respond(req => closing.requestReopen(req.inventory, req.params.id, req.body)));
+  router.get('/reopens/:id', respond(req => closing.getReopen(req.inventory, req.params.id)));
+  router.get('/reopens/:id/periods', respond(req => closing.reopenPeriods(req.inventory, req.params.id, req.query)));
+  for (const action of ['approve','reject']) {
+    router.post(`/snapshots/:id/${action}`, csrfProtection, respond(req => closing.review(req.inventory, req.params.id, action, req.body)));
+    router.post(`/reopens/:id/${action}`, csrfProtection, respond(req => closing.reviewReopen(req.inventory, req.params.id, action, req.body)));
+  }
   router.get('/reservations', respond(req => reservations.listReservations(req.inventory, req.query)));
   router.post('/reservations', csrfProtection, respond(req => reservations.reserve(req.inventory, req.body)));
   router.get('/reservations/:id', respond(req => reservations.getReservation(req.inventory, req.params.id)));

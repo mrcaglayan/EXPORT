@@ -63,7 +63,7 @@ This stage records physical dispatch and consumed stock cost. It does not create
 a GL journal/posting request or infer invoice, ownership-transfer, customs, VAT
 deduction or refund events. No approved dispatch-to-GL account/event policy exists
 yet. Later accounting integration must define and test that policy explicitly;
-PR-02E must report any unposted financial difference rather than claim GL parity.
+PR-02E reports unposted financial differences and blocks close when GL differs.
 
 ## Atomicity, SQL guards and retries
 
@@ -124,9 +124,14 @@ respect permissions and state. Read-only inventory users can inspect every view.
 Sidebar-only navigation, responsive tables and the absence of page-intro banners
 are preserved.
 
-Next is PR-02E: trial balance, versioned month-end snapshots and close/reopen.
-Reconcile issue consumption and carry outstanding reservations across periods;
-keep reservation release history separate from stock movement. PR-02F adds
+PR-02E is implemented: [trial balance and close](inventory-close.md) reconcile
+issue consumption and carry historical reservations using business dates and
+recorded UTC release timestamps, separate from stock movement. PR-02F adds
 reversals/adjustments and performance budgets on representative synthetic volumes.
 The common entity lock and per-allocation counter updates remain explicit scaling
 limits; 301-line correctness testing is not a production performance guarantee.
+
+PR-02F is now implemented: see [corrections and release gate](inventory-corrections.md).
+It retains exact original receipt/transfer/issue sources and reservation counters,
+adds independent count/revaluation/reversal approval and cursor movement reads,
+and verifies all inventory stages. Preserve applied m001–m011. PR-03A is next.

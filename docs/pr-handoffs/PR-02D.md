@@ -1,5 +1,9 @@
 # PR-02D handoff — Reservations and FIFO dispatch
 
+**Current status — 26 October 2026:** PR-02F and the inventory release gate are
+implemented; see the [PR-02F handoff](PR-02F.md). PR-03A is next. The dated results
+below describe the PR-02D delivery and its original next-step context.
+
 Completed **23 October 2026 (Europe/Istanbul)**. Next is **PR-02E: stock trial
 balance, month-end snapshots and close**. PR-02E was not started.
 

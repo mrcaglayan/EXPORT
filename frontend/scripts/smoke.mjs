@@ -10,6 +10,8 @@ import { checkInventory } from './inventory-smoke.mjs'
 import { checkReceipts } from './receipts-smoke.mjs'
 import { checkReallocations } from './reallocations-smoke.mjs'
 import { checkReservations } from './reservations-smoke.mjs'
+import { checkStockClose } from './inventory-close-smoke.mjs'
+import { checkCorrections } from './inventory-corrections-smoke.mjs'
 
 const browser = await chromium.launch({
   ...(process.env.BROWSER_PATH
@@ -81,6 +83,8 @@ try {
     await checkReceipts(page, base, artifacts)
     await checkReallocations(page, base, artifacts, browser)
     await checkReservations(page, base, artifacts)
+    await checkStockClose(page, base, artifacts, browser)
+    await checkCorrections(page, base, artifacts, browser)
     await page.goto(base)
   }
   await page.getByRole('link', { name: 'Explore products', exact: true }).click()
@@ -213,10 +217,33 @@ try {
     await page.getByRole('tab', { name: 'Dispatches', exact: true }).click()
     await page.getByRole('button', { name: 'View dispatch BROWSER-DISPATCH', exact: true }).click()
     await page.getByRole('heading', { name: 'Dispatch BROWSER-DISPATCH', exact: true }).waitFor()
+    await page.getByRole('tab', { name: 'Trial balance & close', exact: true }).click()
+    await page.getByLabel('Report period', { exact: true }).selectOption({ label: 'FEB — 2026-02-01 → 2026-02-28 · CLOSED' })
+    await page.getByText('APPROVED · version 2', { exact: true }).waitFor()
+    assert.equal(await page.getByRole('heading', { name: /^Stock and GL comparison:/ }).count(), 0)
+    assert.equal(await page.getByRole('button', { name: /Prepare close|Approve close|Request reopen|Edit inventory account mapping/ }).count(), 0)
+    await page.getByRole('button', { name: 'Inspect close version 1', exact: true }).click()
+    await page.getByText('SUPERSEDED · version 1', { exact: true }).waitFor()
     await page.getByRole('button', { name: 'Open navigation' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Sign out', exact: true }).click()
     await page.getByRole('heading', { name: 'Sign in', exact: true }).waitFor()
-    console.log('PASS: inventory reader can view metadata, receipt provenance, reservations and dispatches with no posting, configuration or audit controls.')
+    await page.getByLabel('Workspace code').fill(account.tenantCode)
+    await page.getByLabel('Email', { exact: true }).fill(process.env.SMOKE_INVENTORY_READER_EMAIL)
+    await page.getByLabel('Password', { exact: true }).fill(account.password)
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+    await page.getByRole('heading', { name: 'Sign in', exact: true }).waitFor({ state: 'hidden' })
+    await page.goto(`${base}/inventory`)
+    await waitForPageContent('Inventory')
+    await page.getByRole('tab', { name: 'Corrections', exact: true }).click()
+    await page.getByRole('button', { name: 'View correction BROWSER-REVALUE', exact: true }).click()
+    await page.getByRole('heading', { name: 'Correction BROWSER-REVALUE', exact: true }).waitFor()
+    assert.equal(await page.getByRole('button', { name: /Approve correction|Post correction|Cancel correction|New physical count/ }).count(), 0)
+    await page.getByRole('tab', { name: 'Movement history', exact: true }).click()
+    await page.getByRole('heading', { name: 'Stock integrity: MATCHED', exact: true }).waitFor()
+    await page.getByRole('button', { name: 'Open navigation' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Sign out', exact: true }).click()
+    await page.getByRole('heading', { name: 'Sign in', exact: true }).waitFor()
+    console.log('PASS: inventory reader can inspect stock, reservations, dispatches and retained close versions without financial detail or write controls.')
   }
   assert.deepEqual(failures, [])
   console.log('PASS: login errors/success, protected return route, seven routes, request IDs, readiness states, mobile account controls, logout and browser runtime; isolated mode also tests entity switching, scoped editing and viewer access.')

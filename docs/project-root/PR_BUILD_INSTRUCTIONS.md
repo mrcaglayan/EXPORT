@@ -1,12 +1,12 @@
 # Coding-Agent PR Execution Instructions — Export Accounting Application
 
-Use this alongside `EXPORT_IMPLEMENTATION_ROADMAP.md` and the **new, user-authorized 21 October baseline** `PR01_PR02_database_specification.md` / `PR01_PR02_schema.sql`. Authoritative copies are tracked in `export-accounting/docs/design/`. The original referenced inputs were never supplied; the new baseline is not presented as a recovered original. Baseline v7 implements PR-01A/PR-01B/PR-02A/PR-02B/PR-02C/PR-02D; later inventory contracts remain planned.
+Use this alongside `EXPORT_IMPLEMENTATION_ROADMAP.md` and the **new, user-authorized 21 October baseline** `PR01_PR02_database_specification.md` / `PR01_PR02_schema.sql`. Authoritative copies are tracked in `export-accounting/docs/design/`. The original referenced inputs were never supplied; the new baseline is not presented as a recovered original. Baseline v9 implements all PR-01/PR-02 contracts through m011; purchasing remains planned.
 
 ## Overall coding contract
 
-**Current status (23 October 2026):** PR-00AA through PR-00C, PR-01A through PR-01C and PR-02A/PR-02B/PR-02C/PR-02D are implemented.
-Next is PR-02E — stock trial balance, month-end snapshots and close.
-See `docs/pr-handoffs/PR-02D.md` from the repository root. Earlier task briefs below remain the historical scope
+**Current status (26 October 2026):** PR-00AA through PR-00C, PR-01A through PR-01C and PR-02A through PR-02F are implemented.
+Next is PR-03A — trading partners, contracts, purchase requests/orders and approvals.
+See `docs/pr-handoffs/PR-02F.md` from the repository root. Earlier task briefs below remain the historical scope
 definitions; do not recreate or reinstall the existing scaffold.
 
 You are building a **NEW standalone Export Accounting application** using `SaaP-main.zip` only as a technology and coding-style reference. Use Node.js ES modules + Express 5 + `mysql2/promise` + MySQL 8 + React 19 + Vite 7 + Tailwind 4 + shadcn/Radix + React Router 7 + Axios. Keep backend and frontend as separate npm projects. Use camelCase JSON, snake_case DB, `/api/v1`, SaaP-style JavaScript migrations and `schema_migrations`, service/route/validator separation, permission-scoped routes, OpenAPI, and PR-specific test scripts. Use environment-only secrets. NEVER import production data from the historical `Ortak Malzeme.xlsx` reference. A country pool is a virtual allocation in one physical warehouse. Prevent negative stock and duplicate postings transactionally. Do not implement later modules early.
@@ -108,7 +108,7 @@ PR-02C is complete in m008. See `docs/architecture/inventory-reallocations.md` f
 
 ## PR-02D task brief
 
-PR-02D is complete in m009. See `docs/architecture/inventory-reservations.md`. Next is PR-02E; preserve applied m001–m009. Dispatch records consumed stock cost; automatic GL posting awaits an approved event/account policy.
+PR-02D is complete in m009. See `docs/architecture/inventory-reservations.md`. PR-02E/PR-02F are also complete; preserve applied m001–m011. Dispatch records consumed stock cost; automatic GL posting awaits an approved event/account policy.
 
 
 Build warehouse/SKU/source-layer/pool reservations with FIFO selection, no-negative-stock and quantity conservation. Export dispatch consumes both physical and allocated quantity and stores the exact source layer for future VAT. Test conflicting reservations and concurrent dispatch attempts. Subtract active reservations from allocation preview and transfer execution. Extend m008 event/physical-ledger guards in a forward migration while verifying the complete retained schema. Pending reallocation requests are not reservations. Do not calculate refundable VAT yet.
@@ -117,9 +117,21 @@ Build warehouse/SKU/source-layer/pool reservations with FIFO selection, no-negat
 
 Build stock trial balance with monthly opening, receipts, issues, valuation adjustments, and closing by SKU, family, warehouse and country pool. Add month-close snapshots, GL reconciliation checkpoint, posting lock, close approval and versioned reopen. Performance should use approved prior close + in-period ledger movements, not scan all history for each report.
 
+PR-02E is complete in m010. See docs/architecture/inventory-close.md. Preserve
+explicit asset mapping, independent approval, historical reservation cutoff,
+financial read permissions and immutable superseded snapshots. No automatic
+GL/VAT policy is inferred. PR-02F now covers value-only movements, reversal lineage
+and representative-volume performance in the inventory release gate.
+
 ## PR-02F task brief
 
 Add reversals and correction audit, controlled adjustments/revaluation, concurrency and performance gates. Verify invariants at physical, layer, pool and layer+pool grains. Build a comprehensive PR-02 release gate. No silent editing of posted event history.
+
+PR-02F is complete in m011. See docs/architecture/inventory-corrections.md.
+Run npm --prefix backend run test:pr02 for the complete inventory gate. Preserve
+independent approval, source hashes, original event/issue/reservation history and
+closed versions. Next is PR-03A; keep multi-item purchasing/invoice source identity
+and explicit GL/VAT policy boundaries while extending the existing system.
 
 ## Definition of done for EACH PR
 

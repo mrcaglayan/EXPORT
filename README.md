@@ -30,7 +30,13 @@ sidebar or relevant page. Pages start directly with their main content, without
 separate “Your workspace”/page-name/subtitle introductions. Meaningful headings
 and actions stay within content panels.
 
-**Next: PR-02E — stock trial balance, month-end snapshots and close.**
+PR-02E adds stock trial balance, immutable close versions, explicit GL comparison
+and independent close/reopen approval.
+
+PR-02F adds reviewed counts/revaluation, exact event reversals, cursor movement
+history, stock integrity checks and the combined inventory release gate.
+
+**Next: PR-03A — trading partners, contracts, purchase requests/orders and approvals.**
 The user-authorized [new design baseline](docs/design/PR01_PR02_database_specification.md)
 and [SQL reference](docs/design/PR01_PR02_schema.sql) were written on 21 October
 2026; the originally referenced files were not supplied.
@@ -428,7 +434,7 @@ reference both warehouse and pool. Creating these records creates no stock or GL
 
 Use **Inventory periods** to link an open accounting period. Create its fiscal
 year/calendar in Accounting first. Dates are reused, and accounting and inventory
-statuses are displayed separately. Inventory closing is a later step. **Movement
+statuses are displayed separately. Use Trial balance & close for inventory closing. **Movement
 types** define fixed effects for future posting; they do not execute movements.
 Codes, country identity and movement effects stay fixed. Names/location/status
 are editable, and inactive codes remain reserved. Administrators can configure
@@ -496,9 +502,50 @@ cap is imposed; the 1 MiB request guard and paged reads/editors remain.
 Dispatch does not imply a GL, invoice, ownership-transfer, customs or VAT event.
 Receipt entry remains fixture-only until PR-03; no local business stock is seeded.
 See [the reservation contract](docs/architecture/inventory-reservations.md) and
-[PR-02D handoff](docs/pr-handoffs/PR-02D.md). Next is PR-02E.
+[PR-02D handoff](docs/pr-handoffs/PR-02D.md). PR-02E is implemented below.
 
 ```text
 npm --prefix backend run test:pr02d
 npm --prefix backend run test:pr02d:browser
 ```
+
+## Stock trial balance and close (PR-02E)
+
+Open Inventory → **Trial balance & close**. Select a period, inspect physical or
+pool movements, and explicitly map inventory asset accounts for GL comparison.
+Missing mappings or differences block preparation. Another authorized user must
+approve the close. Reopen preserves old versions and invalidates later dependent
+closes; linked closed accounting periods reopen in the same transaction.
+
+No automatic GL/VAT entry or extra local reviewer is created. Receipt entry
+remains fixture-only until PR-03. See the [close contract](docs/architecture/inventory-close.md)
+and [PR-02E handoff](docs/pr-handoffs/PR-02E.md).
+
+```text
+npm --prefix backend run test:pr02e
+npm --prefix backend run test:pr02e:browser
+```
+
+Run only one browser gate at a time. Refresh after migration to load permissions.
+
+## Corrections and inventory release gate (PR-02F)
+
+Inventory → **Corrections** supports physical counts, value-only revaluation and
+exact reversals against existing source stock. An independent reviewer approves;
+posting checks the retained plan again. Returned dispatch stock is available for
+a new reservation. **Movement history** shows cursor-paged entries and stock
+integrity. Closed report versions retain their original values and sources.
+
+No automatic GL/VAT entry or purchase source is created. Differences remain
+visible in Trial balance & close. See the [correction contract](docs/architecture/inventory-corrections.md)
+and [PR-02F handoff](docs/pr-handoffs/PR-02F.md) for rules and measured limits.
+
+```text
+npm --prefix backend run test:pr02f
+npm --prefix backend run test:pr02f:performance
+npm --prefix backend run test:pr02f:browser
+npm --prefix backend run test:pr02
+```
+
+The final command verifies all PR-02 stages and earlier dependencies in disposable
+schemas. It includes the browser gate once; do not run another browser gate beside it.

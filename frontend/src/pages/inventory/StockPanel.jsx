@@ -44,7 +44,7 @@ export default function StockPanel({ base, resource, revision }) {
         </> : <>
           <Cell>{row.warehouseCode}</Cell><Cell><button type="button" className="text-teal-800 underline" aria-label={`Filter SKU ${row.skuCode}`} onClick={() => change(setSkuId, row.skuId)}>{row.skuCode}</button><br />{row.unitCode}</Cell>
           {pool && <Cell>{row.poolCode}</Cell>}<Cell>{row.quantity}</Cell>{resource.endsWith('balances') && <><Cell>{row.reservedQuantity}</Cell><Cell>{row.availableQuantity}</Cell></>}<Cell>{row.value} {row.currency}</Cell><Cell>{row.receivedDate}</Cell>
-          {resource.endsWith('ledger') && <Cell>{row.eventKind}<br />{row.postingDate}{row.reallocationReference && <p>{row.reallocationReference}</p>}{row.issueReference && <p>{row.issueReference}</p>}</Cell>}
+          {resource.endsWith('ledger') && <Cell>{row.eventKind}<br />{row.postingDate}{row.reallocationReference && <p>{row.reallocationReference}</p>}{row.issueReference && <p>{row.issueReference}</p>}{row.correctionReference && <p>{row.correctionReference}</p>}{row.reversesEventId && <p>Exact reversal</p>}</Cell>}
           <Cell><button type="button" className="text-teal-800 underline" aria-label={`View source ${row.sourceId} line ${row.sourceLineKey}`} onClick={() => setSelected(row.receiptId)}>{row.sourceId} / {row.sourceLineKey}</button><details className="mt-1 text-xs"><summary>Layer reference</summary><span className="break-all">{row.layerId}</span></details></Cell>
         </>} />
       <Pager data={list.data} offset={offset} setOffset={setOffset} />

@@ -1,8 +1,8 @@
 # PR-02A handoff — Inventory foundation
 
-**Current status — 23 October 2026:** PR-02D is implemented; see the
-[PR-02D handoff](PR-02D.md). PR-02E is next. The dated results below describe
-the PR-02A delivery and its original next-step context.
+**Current status — 26 October 2026:** PR-02F and the inventory release gate are
+implemented; see the [PR-02F handoff](PR-02F.md). PR-03A is next. The dated results
+below describe the PR-02A delivery and its original next-step context.
 
 Completed **22 October 2026 (Europe/Istanbul)**. Next is **PR-02B: goods receipts,
 FIFO source layers and immutable physical/pool ledgers**.

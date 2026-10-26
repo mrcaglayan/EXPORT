@@ -35,7 +35,13 @@
     "test:pr02a": "node scripts/test-pr00.js inventory",
     "test:pr02a:browser": "node scripts/test-pr00.js browser",
     "test:pr02b": "node scripts/test-pr00.js receipts",
-    "test:pr02b:browser": "node scripts/test-pr00.js browser"
+    "test:pr02b:browser": "node scripts/test-pr00.js browser",
+    "test:pr02e": "node scripts/test-pr00.js closing",
+    "test:pr02e:browser": "node scripts/test-pr00.js browser",
+    "test:pr02f": "node scripts/test-pr00.js corrections",
+    "test:pr02f:performance": "node scripts/test-pr00.js inventory-performance",
+    "test:pr02f:browser": "node scripts/test-pr00.js browser",
+    "test:pr02": "node scripts/test-pr02.js"
   },
   "keywords": [],
   "author": "",

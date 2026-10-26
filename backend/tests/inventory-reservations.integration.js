@@ -39,14 +39,16 @@ test('PR-02D reservations, partial release and exact FIFO dispatch', {timeout:18
  const {rows:history}=await query('SELECT * FROM schema_migrations ORDER BY migration_key');
  const {rows:physicalBefore}=await query('SELECT * FROM inventory_balances');
  await t.test('m009 extends m008 without rewriting prior data/history and owns full verification',async()=>{
-   await runMigrations();await runMigrations();assert.equal((await query('SHOW TABLES')).rows.length,50);
+   const upgrade = options => runMigrations({ migrations: migrations.slice(0,9), ...options });
+   await upgrade();await upgrade();assert.equal((await query('SHOW TABLES')).rows.length,50);
    assert.deepEqual((await query("SELECT * FROM schema_migrations WHERE migration_key <> 'm009_inventory_reservations_issues' ORDER BY migration_key")).rows,history);
    assert.deepEqual((await query('SELECT * FROM inventory_balances')).rows,physicalBefore);
    const tr=triggers.find(([name])=>name==='inventory_pool_balances_reserved_guard');await getMigrationPool().query(`DROP TRIGGER ${tr[0]}`);
-   try{await assert.rejects(runMigrations(),/trigger differs/);}finally{await getMigrationPool().query(`CREATE TRIGGER ${tr[0]} BEFORE ${tr[1]} ON ${tr[2]} FOR EACH ROW ${tr[3]}`);}
+   try{await assert.rejects(upgrade(),/trigger differs/);}finally{await getMigrationPool().query(`CREATE TRIGGER ${tr[0]} BEFORE ${tr[1]} ON ${tr[2]} FOR EACH ROW ${tr[3]}`);}
    await query("UPDATE schema_migrations SET status = 'running' WHERE migration_key = 'm009_inventory_reservations_issues'");
-   await assert.rejects(runMigrations(),{code:'MIGRATION_RECOVERY_REQUIRED'});await runMigrations({retryKey:'m009_inventory_reservations_issues'});await runMigrations();
+   await assert.rejects(upgrade(),{code:'MIGRATION_RECOVERY_REQUIRED'});await upgrade({retryKey:'m009_inventory_reservations_issues'});await upgrade();
  });
+ await runMigrations();
  const reserveBody=(lines=[{skuId:sku.id,quantity:'50'}],extras={})=>({reference:randomUUID(),warehouseId:warehouse.id,destinationPoolId:pools.AF,reservationDate:'2026-01-10',reason:'Confirmed dispatch demand',lines,...extras});
  const reserve=async(lines,extras)=>(await stock.reserve(ctx(),reserveBody(lines,extras))).reservation;
  const lines=async id=>(await stock.reservationLines(ctx(),id,{})).items;

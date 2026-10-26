@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Export Accounting API
-  version: 0.10.0
+  version: 0.12.0
   description: >-
     PR-00B identity and scoped access, plus foundation health/readiness.
 
@@ -6392,6 +6392,2058 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/trial-balance:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      summary: Read period stock trial balance
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.read in the assigned entity. Defaults to the current
+        approved snapshot if closed; otherwise a consistent live report. snapshotId selects a retained
+        version in this period, including superseded/rejected versions. Opening uses the last valid
+        approved snapshot plus intervening movements; incoming/outgoing and closing show quantity AND
+        base-currency value. Group by layer, SKU, family, warehouse or pool; different base units
+        remain separate. Pool grouping/filter requires POOL grain. Summary stockValue is entity-wide;
+        filteredClosingValue reflects the chosen view. Financial details are excluded. Reservation
+        dates and dispatch posting dates are business dates; release effectiveness uses recorded UTC
+        timestamps at period end.
+      parameters:
+        - name: periodId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: snapshotId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: grain
+          in: query
+          schema:
+            type: string
+            enum:
+              - PHYSICAL
+              - POOL
+            default: PHYSICAL
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum:
+              - layer
+              - sku
+              - family
+              - warehouse
+              - pool
+            default: layer
+        - name: warehouseId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: skuId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: familyId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: poolId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: layerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockTrialBalanceRow'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  filteredClosingValue:
+                    type: string
+                    pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+                    description: >-
+                      Exact decimal string; six fractional places in stock reports. Aggregated values
+                      may exceed a single document amount.
+                  summary:
+                    $ref: '#/components/schemas/StockCloseSummary'
+                  period:
+                    $ref: '#/components/schemas/StockClosePeriod'
+                  snapshot:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      version:
+                        type: integer
+                      watermark:
+                        type: string
+                        enum:
+                          - ASSEMBLING
+                          - IN_REVIEW
+                          - APPROVED
+                          - REJECTED
+                          - SUPERSEDED
+                      contentHash:
+                        type: string
+                        maxLength: 64
+                      preparedAt:
+                        type: string
+                        format: date-time
+                    required:
+                      - id
+                      - version
+                      - watermark
+                      - contentHash
+                      - preparedAt
+                    nullable: true
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - filteredClosingValue
+                  - summary
+                  - period
+                  - snapshot
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/trial-balance/movements:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      summary: Read stock period movement detail
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.read in the assigned entity. Signed stock movements
+        within the selected period and grain/filters. For a snapshot, immutable recorded event
+        membership excludes later backdated corrections. Movement quantity/value and event identity
+        are immutable; displayed catalogue labels may reflect current metadata. Pagination is
+        independent of the report grouping.
+      parameters:
+        - name: periodId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: snapshotId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: grain
+          in: query
+          schema:
+            type: string
+            enum:
+              - PHYSICAL
+              - POOL
+            default: PHYSICAL
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum:
+              - layer
+              - sku
+              - family
+              - warehouse
+              - pool
+            default: layer
+        - name: warehouseId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: skuId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: familyId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: poolId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: layerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockPeriodMovement'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  snapshotId:
+                    type: string
+                    format: uuid
+                    nullable: true
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - snapshotId
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reconciliation:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      summary: Compare stock with selected inventory GL accounts
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.reconciliation.read in the assigned entity. Entity-wide
+        comparison through period end; report grouping/stock filters do not narrow the GL comparison.
+        Explicitly selected active ASSET accounts; no automatic journals or VAT calculation. Missing
+        mapping, non-TRY base currency, GL differences, invalid historical stock, projection
+        mismatches, incomplete operations or unposted accounting requests/journals block close. A
+        selected retained snapshot returns its recorded comparison.
+      parameters:
+        - name: periodId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: snapshotId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: grain
+          in: query
+          schema:
+            type: string
+            enum:
+              - PHYSICAL
+              - POOL
+            default: PHYSICAL
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum:
+              - layer
+              - sku
+              - family
+              - warehouse
+              - pool
+            default: layer
+        - name: warehouseId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: skuId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: familyId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: poolId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: layerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  summary:
+                    $ref: '#/components/schemas/StockCloseFinancialSummary'
+                  watermark:
+                    type: string
+                    enum:
+                      - LIVE
+                      - ASSEMBLING
+                      - IN_REVIEW
+                      - APPROVED
+                      - REJECTED
+                      - SUPERSEDED
+                  snapshotId:
+                    type: string
+                    format: uuid
+                    nullable: true
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - summary
+                  - watermark
+                  - snapshotId
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reconciliation-accounts:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      summary: Read selected inventory asset accounts
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: 'Requires workspace.read and inventory.reconciliation.read in the assigned entity. '
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryAssetAccount'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Select inventory asset accounts
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.reconciliation.configure in the assigned entity. Also
+        requires accounting.configure. Replaces the explicit account set atomically with
+        audit/idempotency. Accounts must be active ASSET accounts in this entity. Mapping is locked
+        while any current approved or pending snapshot exists; reject reviews and approve reopening
+        all closed stock periods before changing it. No inferred account-code prefix or journal is
+        used.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventoryAssetMappingInput'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InventoryAssetAccount'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/periods/{id}/close-status:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read stock period close state
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: 'Requires workspace.read and inventory.read in the assigned entity. '
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  period:
+                    $ref: '#/components/schemas/StockClosePeriod'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - period
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/periods/{id}/snapshots:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: List retained close versions
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.read in the assigned entity. Newest version first;
+        approved prior versions remain discoverable after reopen.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockSnapshotListItem'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/periods/{id}/prepare-close:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Prepare stock period for review
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.period.prepare in the assigned entity. Also requires
+        inventory.reconciliation.read. OPEN only; all earlier inventory periods need approved current
+        snapshots, and no dependent reopen may be pending. Requires full stock/GL reconciliation in
+        TRY. Creates a new immutable report version and event membership, then enters IN_REVIEW under
+        the common entity lock. Stock writers and mapped GL postings through the reviewed date are
+        locked. Audit, state and retry result commit atomically.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockCloseReason'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  snapshot:
+                    $ref: '#/components/schemas/StockSnapshot'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - snapshot
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/snapshots/{id}:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read snapshot metadata and watermark
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.read in the assigned entity. Financial detail has a
+        separate reconciliation endpoint/permission. Content remains immutable; APPROVED is current,
+        SUPERSEDED identifies a retained approval invalidated by reopening.
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  snapshot:
+                    $ref: '#/components/schemas/StockSnapshot'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - snapshot
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/snapshots/{id}/approve:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Approve stock close
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.period.approve in the assigned entity. Also requires
+        inventory.reconciliation.read. Current IN_REVIEW snapshot only. A different authorized user
+        must approve. Recomputes the fingerprint and checks reconciliation/sequence; changed content
+        requires rejection and a new version. Marks snapshot APPROVED and period CLOSED. Existing
+        accounting calendar status is preserved.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockCloseReason'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  snapshot:
+                    $ref: '#/components/schemas/StockSnapshot'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - snapshot
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/snapshots/{id}/reject:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Reject stock close
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.period.approve in the assigned entity. Also requires
+        inventory.reconciliation.read. Current IN_REVIEW snapshot only. Records rejection and returns
+        the inventory period to OPEN; snapshot content is retained. The preparer may reject their own
+        review. Existing accounting calendar status is preserved.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockCloseReason'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  snapshot:
+                    $ref: '#/components/schemas/StockSnapshot'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - snapshot
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/periods/{id}/reopens:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: List reopen requests for a period
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: 'Requires workspace.read and inventory.read in the assigned entity. '
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockReopenListItem'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Request stock period reopening
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.period.reopen in the assigned entity. Also requires
+        accounting.period.close. Current approved CLOSED period only. Captures this and every later
+        closed inventory period, their snapshot identities and accounting calendar status. Reject
+        dependent pending close reviews first. Only one pending reopen per entity; dependent closes
+        are blocked until resolved. No period opens before approval.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockCloseReason'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  reopen:
+                    $ref: '#/components/schemas/StockReopen'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - reopen
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reopens/{id}:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read a stock reopen request
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: 'Requires workspace.read and inventory.read in the assigned entity. '
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  reopen:
+                    $ref: '#/components/schemas/StockReopen'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - reopen
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reopens/{id}/periods:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read affected periods in a reopen request
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.read in the assigned entity. Frozen plan ordered by
+        start date; accountingClosed records whether its accounting calendar will also reopen.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockReopenPeriod'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reopens/{id}/approve:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Approve stock reopen
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.period.approve in the assigned entity. Also requires
+        accounting.period.close. REQUESTED only. A different authorized user must approve. Rechecks
+        the complete dependent plan and accounting statuses; changed plans require rejection and a new
+        request. Atomically clears current snapshot pointers, opens all captured inventory periods and
+        their closed accounting calendars, retaining all versions. Recalculate/reclose in date order.
+        Audit and retry result share the transaction.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockCloseReason'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  reopen:
+                    $ref: '#/components/schemas/StockReopen'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - reopen
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/reopens/{id}/reject:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Reject stock reopen
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.period.approve in the assigned entity. Also requires
+        accounting.period.close. REQUESTED only. Retains rejection reason and leaves all periods
+        unchanged; requester may reject their own request. Audit and retry result share the
+        transaction.
+      parameters:
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockCloseReason'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  reopen:
+                    $ref: '#/components/schemas/StockReopen'
+                  requestId:
+                    type: string
+                    maxLength: 128
+                required:
+                  - reopen
+                  - requestId
+        default:
+          description: >-
+            400 invalid fields or idempotency key; 401 unauthenticated; 403 scope, permission, CSRF,
+            Origin or independent reviewer required; 404 inaccessible period/snapshot/reference; 409
+            invalid state, stale snapshot/reopen, reconciliation failure, earlier period open, pending
+            reopen, locked mapping or retry conflict; 422 unavailable asset account; 413 payload too
+            large; 500 sanitized failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/corrections:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      summary: List reviewed stock correction requests
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: Requires workspace.read and inventory.read in the assigned entity. Newest request first.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - REQUESTED
+              - APPROVED
+              - REJECTED
+              - CANCELLED
+              - POSTED
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockCorrection'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 100
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        '400':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Request count, valuation change or exact event reversal
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.correction.request in the assigned entity. Retains
+        original evidence and computed layer/pool deltas. Both calendars must be open; posting date
+        cannot precede source movements. Revaluation changes only value on stock with positive
+        quantity. Counts value variance at remaining carrying cost (original source cost if empty).
+        Reversals retain every original entry and original cost; completed events only, once per
+        source, no reversal of a reversal. Returned dispatch stock is unreserved; original
+        reservation/issue history remains unchanged. Requires another authorized reviewer; pending
+        requests do not reserve stock. No automatic GL journal or VAT effect.
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockCorrectionInput'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  correction:
+                    $ref: '#/components/schemas/StockCorrection'
+                  requestId:
+                    type: string
+                    maxLength: 100
+                required:
+                  - correction
+                  - requestId
+        '400':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/corrections/{id}:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read a stock correction with review and event lineage
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: 'Requires workspace.read and inventory.read in the assigned entity. '
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  correction:
+                    $ref: '#/components/schemas/StockCorrection'
+                  requestId:
+                    type: string
+                    maxLength: 100
+                required:
+                  - correction
+                  - requestId
+        '400':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/corrections/{id}/lines:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    get:
+      summary: Read retained source, observed count and signed correction deltas
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: 'Requires workspace.read and inventory.read in the assigned entity. '
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockCorrectionLine'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  requestId:
+                    type: string
+                    maxLength: 100
+                required:
+                  - items
+                  - total
+                  - limit
+                  - offset
+                  - requestId
+        '400':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/corrections/{id}/approve:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Approve stock correction
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.correction.review in the assigned entity. REQUESTED
+        only. A different authorized user must approve; rechecks source fingerprint, available stock,
+        references and dates.
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockCloseReason'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  correction:
+                    $ref: '#/components/schemas/StockCorrection'
+                  requestId:
+                    type: string
+                    maxLength: 100
+                required:
+                  - correction
+                  - requestId
+        '400':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/corrections/{id}/reject:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Reject stock correction
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.correction.review in the assigned entity. REQUESTED
+        only. Retains rejected evidence; preparer may reject.
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockCloseReason'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  correction:
+                    $ref: '#/components/schemas/StockCorrection'
+                  requestId:
+                    type: string
+                    maxLength: 100
+                required:
+                  - correction
+                  - requestId
+        '400':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/corrections/{id}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Cancel stock correction
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.correction.request in the assigned entity. Only the
+        requester may cancel REQUESTED or APPROVED requests. Retains all evidence.
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockCloseReason'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  correction:
+                    $ref: '#/components/schemas/StockCorrection'
+                  requestId:
+                    type: string
+                    maxLength: 100
+                required:
+                  - correction
+                  - requestId
+        '400':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/corrections/{id}/post:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+      - $ref: '#/components/parameters/AccountingId'
+    post:
+      summary: Post stock correction
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.correction.post in the assigned entity. APPROVED only.
+        Rechecks immutable plan/source fingerprints and both calendars; stale plans require cancel/new
+        request. Atomically writes exact physical/pool ledger entries, projections, reversal lineage,
+        audit and retry result. POSTED replay returns the existing event; competing reversal requests
+        cannot both post.
+      parameters:
+        - $ref: '#/components/parameters/Origin'
+        - $ref: '#/components/parameters/Csrf'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockCloseReason'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  correction:
+                    $ref: '#/components/schemas/StockCorrection'
+                  requestId:
+                    type: string
+                    maxLength: 100
+                required:
+                  - correction
+                  - requestId
+        '400':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/movements:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      summary: Read stock movements with cursor pagination
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.read in the assigned entity. Newest recorded event/time,
+        event ID and ledger ID order. Opaque cursor must be reused with the same scope/filters. This
+        is a live feed, not an immutable export; return to the first page for new events. Use a close
+        snapshot for a frozen period. Pool-only reallocations appear in POOL grain. Source and
+        correction links remain explicit.
+      parameters:
+        - name: grain
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - PHYSICAL
+              - POOL
+            default: PHYSICAL
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 25
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 1500
+        - name: warehouseId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: skuId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: poolId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockMovementFeedItem'
+                  limit:
+                    type: integer
+                  hasMore:
+                    type: boolean
+                  nextCursor:
+                    type: string
+                    maxLength: 1500
+                    nullable: true
+                  requestId:
+                    type: string
+                    maxLength: 100
+                required:
+                  - items
+                  - limit
+                  - hasMore
+                  - nextCursor
+                  - requestId
+        '400':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/entities/{entityId}/inventory/integrity:
+    parameters:
+      - $ref: '#/components/parameters/InventoryEntity'
+    get:
+      summary: Check stock ledgers, source layers, pools and reservations
+      security:
+        - SessionCookie: []
+        - ProductionSessionCookie: []
+      description: >-
+        Requires workspace.read and inventory.read in the assigned entity. Consistent read
+        transaction; checks physical/pool projections against ledgers, layer pool conservation and
+        nonnegative available stock. Aggregations by warehouse/SKU inherit these grain invariants.
+        Financial comparison remains a separate permission and endpoint.
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - MATCHED
+                      - MISMATCH
+                  checks:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        grain:
+                          type: string
+                          enum:
+                            - PHYSICAL
+                            - POOL
+                            - LAYER_POOLS
+                            - RESERVATIONS
+                        checked:
+                          type: integer
+                        invalid:
+                          type: integer
+                      required:
+                        - grain
+                        - checked
+                        - invalid
+                  requestId:
+                    type: string
+                    maxLength: 100
+                required:
+                  - status
+                  - checks
+                  - requestId
+        '400':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Structured validation, access, state or server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     SessionCookie:
@@ -8552,6 +10604,18 @@ components:
           maxLength: 64
           pattern: ^[A-Za-z0-9._:-]+$
           nullable: true
+        correctionId:
+          type: string
+          format: uuid
+          nullable: true
+        correctionReference:
+          type: string
+          maxLength: 64
+          nullable: true
+        reversesEventId:
+          type: string
+          format: uuid
+          nullable: true
       required:
         - id
         - warehouseId
@@ -8575,6 +10639,9 @@ components:
         - postingDate
         - issueId
         - issueReference
+        - correctionId
+        - correctionReference
+        - reversesEventId
     PoolStockEntry:
       type: object
       additionalProperties: false
@@ -8640,6 +10707,7 @@ components:
             - RECEIPT
             - REALLOCATION
             - ISSUE
+            - CORRECTION
         reallocationId:
           type: string
           format: uuid
@@ -8659,6 +10727,18 @@ components:
           type: string
           maxLength: 64
           pattern: ^[A-Za-z0-9._:-]+$
+          nullable: true
+        correctionId:
+          type: string
+          format: uuid
+          nullable: true
+        correctionReference:
+          type: string
+          maxLength: 64
+          nullable: true
+        reversesEventId:
+          type: string
+          format: uuid
           nullable: true
       required:
         - id
@@ -8685,6 +10765,9 @@ components:
         - postingDate
         - issueId
         - issueReference
+        - correctionId
+        - correctionReference
+        - reversesEventId
     PoolStockBalance:
       type: object
       additionalProperties: false
@@ -9615,6 +11698,1188 @@ components:
         - sourceLineKey
         - reservedQuantity
         - availableQuantity
+    StockClosePeriod:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - OPEN
+            - IN_REVIEW
+            - CLOSED
+        accountingPeriodId:
+          type: string
+          format: uuid
+        code:
+          type: string
+          maxLength: 40
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        accountingStatus:
+          type: string
+          enum:
+            - OPEN
+            - CLOSED
+        currentSnapshotId:
+          type: string
+          format: uuid
+          nullable: true
+        pendingSnapshotId:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+        - id
+        - status
+        - accountingPeriodId
+        - code
+        - startDate
+        - endDate
+        - accountingStatus
+        - currentSnapshotId
+        - pendingSnapshotId
+    InventoryAssetAccount:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          maxLength: 40
+        name:
+          type: string
+          maxLength: 160
+        active:
+          type: boolean
+        accountType:
+          type: string
+          enum:
+            - ASSET
+            - LIABILITY
+            - EQUITY
+            - REVENUE
+            - EXPENSE
+      required:
+        - id
+        - code
+        - name
+        - active
+        - accountType
+    StockFinancialComparison:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+            - NOT_CONFIGURED
+            - ACCOUNT_UNAVAILABLE
+            - MATCHED
+            - MISMATCH
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryAssetAccount'
+        stockValue:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+        glValue:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+        difference:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+        journalIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+        - status
+        - accounts
+        - stockValue
+        - glValue
+        - difference
+        - journalIds
+    StockCloseSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        period:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: string
+              format: uuid
+            code:
+              type: string
+              maxLength: 40
+            startDate:
+              type: string
+              format: date
+            endDate:
+              type: string
+              format: date
+          required:
+            - id
+            - code
+            - startDate
+            - endDate
+        currency:
+          type: string
+          maxLength: 3
+          nullable: true
+        baseSnapshotId:
+          type: string
+          format: uuid
+          nullable: true
+        stockValue:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+        blockers:
+          type: array
+          items:
+            type: string
+            maxLength: 80
+        eventCount:
+          type: integer
+        reservationSourceHash:
+          type: string
+          maxLength: 64
+        reservationCutoff:
+          type: string
+          format: date-time
+      required:
+        - period
+        - currency
+        - baseSnapshotId
+        - stockValue
+        - blockers
+        - eventCount
+        - reservationSourceHash
+        - reservationCutoff
+    StockCloseFinancialSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        period:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: string
+              format: uuid
+            code:
+              type: string
+              maxLength: 40
+            startDate:
+              type: string
+              format: date
+            endDate:
+              type: string
+              format: date
+          required:
+            - id
+            - code
+            - startDate
+            - endDate
+        currency:
+          type: string
+          maxLength: 3
+          nullable: true
+        baseSnapshotId:
+          type: string
+          format: uuid
+          nullable: true
+        stockValue:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+        blockers:
+          type: array
+          items:
+            type: string
+            maxLength: 80
+        eventCount:
+          type: integer
+        reservationSourceHash:
+          type: string
+          maxLength: 64
+        reservationCutoff:
+          type: string
+          format: date-time
+        financial:
+          $ref: '#/components/schemas/StockFinancialComparison'
+      required:
+        - period
+        - currency
+        - baseSnapshotId
+        - stockValue
+        - blockers
+        - eventCount
+        - reservationSourceHash
+        - reservationCutoff
+        - financial
+    StockSnapshot:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        periodId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        baseSnapshotId:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+          enum:
+            - ASSEMBLING
+            - IN_REVIEW
+            - APPROVED
+            - REJECTED
+        contentHash:
+          type: string
+          maxLength: 64
+        lineCount:
+          type: integer
+        summary:
+          $ref: '#/components/schemas/StockCloseSummary'
+        reason:
+          type: string
+          maxLength: 255
+        preparedBy:
+          type: string
+          format: uuid
+        preparedByName:
+          type: string
+          maxLength: 160
+        preparedAt:
+          type: string
+          format: date-time
+        reviewedBy:
+          type: string
+          format: uuid
+          nullable: true
+        reviewedByName:
+          type: string
+          maxLength: 160
+          nullable: true
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        reviewReason:
+          type: string
+          maxLength: 255
+          nullable: true
+        isCurrent:
+          type: boolean
+        watermark:
+          type: string
+          enum:
+            - ASSEMBLING
+            - IN_REVIEW
+            - APPROVED
+            - REJECTED
+            - SUPERSEDED
+      required:
+        - id
+        - periodId
+        - version
+        - baseSnapshotId
+        - status
+        - contentHash
+        - lineCount
+        - summary
+        - reason
+        - preparedBy
+        - preparedByName
+        - preparedAt
+        - reviewedBy
+        - reviewedByName
+        - reviewedAt
+        - reviewReason
+        - isCurrent
+        - watermark
+    StockSnapshotListItem:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        status:
+          type: string
+          enum:
+            - ASSEMBLING
+            - IN_REVIEW
+            - APPROVED
+            - REJECTED
+        preparedBy:
+          type: string
+          format: uuid
+        preparedByName:
+          type: string
+          maxLength: 160
+        preparedAt:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          maxLength: 255
+        contentHash:
+          type: string
+          maxLength: 64
+        isCurrent:
+          type: boolean
+        watermark:
+          type: string
+          enum:
+            - ASSEMBLING
+            - IN_REVIEW
+            - APPROVED
+            - REJECTED
+            - SUPERSEDED
+      required:
+        - id
+        - version
+        - status
+        - preparedBy
+        - preparedByName
+        - preparedAt
+        - reason
+        - contentHash
+        - isCurrent
+        - watermark
+    StockTrialBalanceRow:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          maxLength: 128
+        grain:
+          type: string
+          enum:
+            - PHYSICAL
+            - POOL
+        grainKey:
+          type: string
+          maxLength: 80
+        warehouseId:
+          type: string
+          format: uuid
+        warehouseCode:
+          type: string
+          maxLength: 40
+        skuId:
+          type: string
+          format: uuid
+        skuCode:
+          type: string
+          maxLength: 40
+        familyId:
+          type: string
+          format: uuid
+        familyCode:
+          type: string
+          maxLength: 40
+        unitId:
+          type: string
+          format: uuid
+        unitCode:
+          type: string
+          maxLength: 40
+        layerId:
+          type: string
+          format: uuid
+        poolId:
+          type: string
+          format: uuid
+          nullable: true
+        poolCode:
+          type: string
+          maxLength: 40
+          nullable: true
+        receiptLineId:
+          type: string
+          format: uuid
+        receiptId:
+          type: string
+          format: uuid
+        sourceId:
+          type: string
+          maxLength: 128
+        sourceLineKey:
+          type: string
+          maxLength: 64
+        openingQuantity:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+        openingValue:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+        incomingQuantity:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+        incomingValue:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+        outgoingQuantity:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+        outgoingValue:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+        closingQuantity:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+        closingValue:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+        reservedQuantity:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+        availableQuantity:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+      required:
+        - id
+        - grain
+        - unitId
+        - unitCode
+        - openingQuantity
+        - openingValue
+        - incomingQuantity
+        - incomingValue
+        - outgoingQuantity
+        - outgoingValue
+        - closingQuantity
+        - closingValue
+        - reservedQuantity
+        - availableQuantity
+    StockPeriodMovement:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum:
+            - RECEIPT
+            - REALLOCATION
+            - ISSUE
+            - CORRECTION
+        postingDate:
+          type: string
+          format: date
+        reference:
+          type: string
+          maxLength: 128
+        layerId:
+          type: string
+          format: uuid
+        skuId:
+          type: string
+          format: uuid
+        skuCode:
+          type: string
+          maxLength: 40
+        warehouseId:
+          type: string
+          format: uuid
+        warehouseCode:
+          type: string
+          maxLength: 40
+        poolId:
+          type: string
+          format: uuid
+          nullable: true
+        poolCode:
+          type: string
+          maxLength: 40
+          nullable: true
+        quantity:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+        value:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,23})(\.[0-9]{1,6})?$
+          description: >-
+            Exact decimal string; six fractional places in stock reports. Aggregated values may exceed a
+            single document amount.
+      required:
+        - id
+        - eventId
+        - kind
+        - postingDate
+        - reference
+        - layerId
+        - skuId
+        - skuCode
+        - warehouseId
+        - warehouseCode
+        - poolId
+        - poolCode
+        - quantity
+        - value
+    StockReopen:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        periodId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - REQUESTED
+            - APPROVED
+            - REJECTED
+        reason:
+          type: string
+          maxLength: 255
+        requestedBy:
+          type: string
+          format: uuid
+        requestedByName:
+          type: string
+          maxLength: 160
+        requestedAt:
+          type: string
+          format: date-time
+        reviewedBy:
+          type: string
+          format: uuid
+          nullable: true
+        reviewedByName:
+          type: string
+          maxLength: 160
+          nullable: true
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        reviewReason:
+          type: string
+          maxLength: 255
+          nullable: true
+      required:
+        - id
+        - periodId
+        - status
+        - reason
+        - requestedBy
+        - requestedByName
+        - requestedAt
+        - reviewedBy
+        - reviewedByName
+        - reviewedAt
+        - reviewReason
+    StockReopenListItem:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          maxLength: 255
+        status:
+          type: string
+          enum:
+            - REQUESTED
+            - APPROVED
+            - REJECTED
+        requestedBy:
+          type: string
+          format: uuid
+        requestedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - reason
+        - status
+        - requestedBy
+        - requestedAt
+    StockReopenPeriod:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        periodId:
+          type: string
+          format: uuid
+        snapshotId:
+          type: string
+          format: uuid
+        accountingClosed:
+          type: boolean
+        code:
+          type: string
+          maxLength: 40
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+      required:
+        - id
+        - periodId
+        - snapshotId
+        - accountingClosed
+        - code
+        - startDate
+        - endDate
+    StockCloseReason:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          maxLength: 255
+          minLength: 1
+      required:
+        - reason
+    InventoryAssetMappingInput:
+      type: object
+      additionalProperties: false
+      properties:
+        accountIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 1
+          uniqueItems: true
+        reason:
+          type: string
+          maxLength: 255
+          minLength: 1
+      required:
+        - accountIds
+        - reason
+    StockCorrection:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        reference:
+          type: string
+          maxLength: 64
+        kind:
+          type: string
+          enum:
+            - REVERSAL
+            - COUNT
+            - REVALUATION
+        originalEventId:
+          type: string
+          format: uuid
+          nullable: true
+        postingDate:
+          type: string
+          format: date
+        periodId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          maxLength: 255
+        evidence:
+          type: string
+          maxLength: 255
+        status:
+          type: string
+          enum:
+            - ASSEMBLING
+            - REQUESTED
+            - APPROVED
+            - REJECTED
+            - CANCELLED
+            - POSTING
+            - POSTED
+        requestedBy:
+          type: string
+          format: uuid
+        requestedByName:
+          type: string
+          maxLength: 160
+        requestedAt:
+          type: string
+          format: date-time
+        reviewedBy:
+          type: string
+          format: uuid
+          nullable: true
+        reviewedByName:
+          type: string
+          maxLength: 160
+          nullable: true
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        reviewReason:
+          type: string
+          maxLength: 255
+          nullable: true
+        postedBy:
+          type: string
+          format: uuid
+          nullable: true
+        postedAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelReason:
+          type: string
+          maxLength: 255
+          nullable: true
+        eventId:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+        - id
+        - reference
+        - kind
+        - originalEventId
+        - postingDate
+        - periodId
+        - reason
+        - evidence
+        - status
+        - requestedBy
+        - requestedByName
+        - requestedAt
+        - reviewedBy
+        - reviewedByName
+        - reviewedAt
+        - reviewReason
+        - postedBy
+        - postedAt
+        - cancelReason
+        - eventId
+    StockCorrectionLine:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        lineNumber:
+          type: integer
+        layerId:
+          type: string
+          format: uuid
+        poolId:
+          type: string
+          format: uuid
+        poolCode:
+          type: string
+          maxLength: 40
+        skuCode:
+          type: string
+          maxLength: 40
+        warehouseCode:
+          type: string
+          maxLength: 40
+        unitCode:
+          type: string
+          maxLength: 40
+        sourceEntryId:
+          type: string
+          format: uuid
+          nullable: true
+        beforeQuantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        beforeValue:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        quantity:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        value:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        observedQuantity:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          nullable: true
+        targetValue:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+          nullable: true
+        sourceId:
+          type: string
+          maxLength: 128
+        sourceLineKey:
+          type: string
+          maxLength: 64
+        receiptId:
+          type: string
+          format: uuid
+      required:
+        - id
+        - lineNumber
+        - layerId
+        - poolId
+        - poolCode
+        - skuCode
+        - warehouseCode
+        - unitCode
+        - sourceEntryId
+        - beforeQuantity
+        - beforeValue
+        - quantity
+        - value
+        - observedQuantity
+        - targetValue
+        - sourceId
+        - sourceLineKey
+        - receiptId
+    StockCorrectionInput:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          properties:
+            reference:
+              type: string
+              maxLength: 64
+              pattern: ^[A-Za-z0-9._:-]+$
+            postingDate:
+              type: string
+              format: date
+            reason:
+              type: string
+              maxLength: 255
+              minLength: 1
+            evidence:
+              type: string
+              maxLength: 255
+              minLength: 1
+            kind:
+              type: string
+              enum:
+                - REVERSAL
+            originalEventId:
+              type: string
+              format: uuid
+          required:
+            - reference
+            - postingDate
+            - reason
+            - evidence
+            - kind
+            - originalEventId
+        - type: object
+          additionalProperties: false
+          properties:
+            reference:
+              type: string
+              maxLength: 64
+              pattern: ^[A-Za-z0-9._:-]+$
+            postingDate:
+              type: string
+              format: date
+            reason:
+              type: string
+              maxLength: 255
+              minLength: 1
+            evidence:
+              type: string
+              maxLength: 255
+              minLength: 1
+            kind:
+              type: string
+              enum:
+                - COUNT
+            lines:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                properties:
+                  layerId:
+                    type: string
+                    format: uuid
+                  poolId:
+                    type: string
+                    format: uuid
+                  observedQuantity:
+                    type: string
+                    pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+                required:
+                  - layerId
+                  - poolId
+                  - observedQuantity
+              minItems: 1
+          required:
+            - reference
+            - postingDate
+            - reason
+            - evidence
+            - kind
+            - lines
+        - type: object
+          additionalProperties: false
+          properties:
+            reference:
+              type: string
+              maxLength: 64
+              pattern: ^[A-Za-z0-9._:-]+$
+            postingDate:
+              type: string
+              format: date
+            reason:
+              type: string
+              maxLength: 255
+              minLength: 1
+            evidence:
+              type: string
+              maxLength: 255
+              minLength: 1
+            kind:
+              type: string
+              enum:
+                - REVALUATION
+            lines:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                properties:
+                  layerId:
+                    type: string
+                    format: uuid
+                  poolId:
+                    type: string
+                    format: uuid
+                  targetValue:
+                    type: string
+                    pattern: ^(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+                required:
+                  - layerId
+                  - poolId
+                  - targetValue
+              minItems: 1
+          required:
+            - reference
+            - postingDate
+            - reason
+            - evidence
+            - kind
+            - lines
+      description: >-
+        Distinct layer/pool per line, no fixed document-line ceiling. 1 MiB request guard applies.
+        Counts/valuations use existing source pool projections only; no new purchase lot, ownership or
+        VAT is invented.
+    StockMovementFeedItem:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        eventKind:
+          type: string
+          enum:
+            - RECEIPT
+            - REALLOCATION
+            - ISSUE
+            - CORRECTION
+        postingDate:
+          type: string
+          format: date
+        layerId:
+          type: string
+          format: uuid
+        skuId:
+          type: string
+          format: uuid
+        skuCode:
+          type: string
+          maxLength: 40
+        warehouseId:
+          type: string
+          format: uuid
+        warehouseCode:
+          type: string
+          maxLength: 40
+        poolId:
+          type: string
+          format: uuid
+          nullable: true
+        poolCode:
+          type: string
+          maxLength: 40
+          nullable: true
+        quantity:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        value:
+          type: string
+          pattern: ^-?(0|[1-9][0-9]{0,13})(\.[0-9]{1,6})?$
+        reversesEventId:
+          type: string
+          format: uuid
+          nullable: true
+        correctionId:
+          type: string
+          format: uuid
+          nullable: true
+        correctionKind:
+          type: string
+          enum:
+            - REVERSAL
+            - COUNT
+            - REVALUATION
+          nullable: true
+        reference:
+          type: string
+          maxLength: 128
+        reversedByEventId:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+        - id
+        - eventId
+        - eventKind
+        - postingDate
+        - layerId
+        - skuId
+        - skuCode
+        - warehouseId
+        - warehouseCode
+        - poolId
+        - poolCode
+        - quantity
+        - value
+        - reversesEventId
+        - correctionId
+        - correctionKind
+        - reference
+        - reversedByEventId
+    StockIntegrity:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+            - MATCHED
+            - MISMATCH
+        checks:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              grain:
+                type: string
+                enum:
+                  - PHYSICAL
+                  - POOL
+                  - LAYER_POOLS
+                  - RESERVATIONS
+              checked:
+                type: integer
+              invalid:
+                type: integer
+            required:
+              - grain
+              - checked
+              - invalid
+      required:
+        - status
+        - checks
   responses:
     Profile:
       description: >-

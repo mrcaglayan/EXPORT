@@ -43,7 +43,7 @@ export async function available(tx, context, input, poolId) {
     COALESCE((SELECT SUM(a.quantity - a.released_quantity - a.issued_quantity) FROM inventory_reservation_allocations a
       JOIN inventory_reservations r ON r.tenant_id = a.tenant_id AND r.legal_entity_id = a.legal_entity_id AND r.id = a.reservation_id
       WHERE a.tenant_id = b.tenant_id AND a.legal_entity_id = b.legal_entity_id AND a.layer_id = b.layer_id AND a.pool_id = b.pool_id AND r.status IN ('ASSEMBLING','ACTIVE')),0) AS reservedQuantity, x.received_date AS receivedDate,
-    (SELECT MAX(COALESCE(i.posting_date,r.posting_date,h.posting_date)) FROM inventory_pool_ledger p
+    (SELECT MAX(e.posting_date) FROM inventory_pool_ledger p
       JOIN inventory_events e ON e.tenant_id = p.tenant_id AND e.legal_entity_id = p.legal_entity_id AND e.id = p.event_id
       LEFT JOIN inventory_reallocations r ON r.tenant_id = e.tenant_id AND r.legal_entity_id = e.legal_entity_id AND r.id = e.reallocation_id
       LEFT JOIN inventory_issues i ON i.tenant_id = e.tenant_id AND i.legal_entity_id = e.legal_entity_id AND i.id = e.issue_id

@@ -115,5 +115,10 @@ PR-02D is implemented by m009: [reservations and dispatch](inventory-reservation
 subtract outstanding reservations from preview and transfer execution, retain exact
 source allocations and extend event/physical-ledger guards. m009 verifies the full
 evolved m007/m008 schema; applied migration sources remain unchanged.
-Do not repurpose an approved reallocation request as a reservation. PR-02E adds
-period close/snapshots; PR-02F adds reversals/adjustments and the final release gate.
+Do not repurpose an approved reallocation request as a reservation. PR-02E implements
+[period close/snapshots](inventory-close.md); PR-02F adds reversals/adjustments and the final release gate.
+
+PR-02F is now implemented: see [corrections and release gate](inventory-corrections.md).
+It retains exact original receipt/transfer/issue sources and reservation counters,
+adds independent count/revaluation/reversal approval and cursor movement reads,
+and verifies all inventory stages. Preserve applied m001–m011. PR-03A is next.

@@ -1,15 +1,15 @@
 # Export Accounting Application — SaaP-Aligned Implementation Roadmap
 
-**Version:** 1.11 — 23 October 2026
+**Version:** 1.13 — 26 October 2026
 **Project:** new, standalone Turkish trading-exporter application  
 **Reference inspected:** uploaded `SaaP-main.zip` (read as reference, NOT executed)  
 **Scope:** multi-tenant / legal entity, product catalogue, same-warehouse virtual destination allocations, immutable inventory/accounting ledgers, purchasing/e-invoice, customs, VAT attribution and refund preparation.
 
-**Progress (23 October 2026):** PR-00AA through PR-00C, PR-01A through PR-01C and PR-02A/PR-02B/PR-02C/PR-02D implemented.
-Next: PR-02E — stock trial balance, month-end snapshots and close.
+**Progress (26 October 2026):** PR-00AA through PR-00C, PR-01A through PR-01C and PR-02A through PR-02F implemented.
+Next: PR-03A — trading partners, contracts, purchase requests/orders and approvals.
 The user authorized a new PR-01/02 design baseline; it is clearly labeled as new.
 Journals have no fixed line-count ceiling, use a paged editor and batched writes.
-See `docs/pr-handoffs/PR-02D.md` from the repository root for actual
+See `docs/pr-handoffs/PR-02F.md` from the repository root for actual
 commands/results and the current implementation limits.
 
 ## 0. Ground rules and confirmed decisions
@@ -17,7 +17,7 @@ commands/results and the current implementation limits.
 1. The new application uses **the same technology family and code conventions as SaaP**, but is a **separate repository and database**. It is not a copy or extension of the whole SaaP ERP. A future integration adapter can be added when required.
 2. Country-specific goods share the **same physical warehouse** and are earmarked with **virtual country pools**. `GENERAL` + country pools must sum to physical on-hand stock for each warehouse/SKU/source layer.
 3. The Excel workbook `Ortak Malzeme.xlsx` is **background reference only**. Do not load it, reconstruct old purchases/stock balances, seed historical inventory, consolidate its real codes, or allocate historical input VAT. Build **capabilities** for later import and approval, but do not execute any migration until actual data and a cut-off date are supplied.
-4. On 21 October 2026 the user authorized a **new baseline**: `PR01_PR02_database_specification.md` and `PR01_PR02_schema.sql`. Tracked authoritative copies are in `export-accounting/docs/design/`; matching copies sit beside this roadmap. They were written from this roadmap and the existing app, not recovered original inputs. Baseline v7 includes PR-01A/PR-01B/PR-02A/PR-02B/PR-02C/PR-02D DDL implemented in m004–m009; future PR-02E–02F contracts are explicitly planned and must be refined in their own forward-only migrations. Preserve applied migrations.
+4. On 21 October 2026 the user authorized a **new baseline**: `PR01_PR02_database_specification.md` and `PR01_PR02_schema.sql`. Tracked authoritative copies are in `export-accounting/docs/design/`; matching copies sit beside this roadmap. They were written from this roadmap and the existing app, not recovered original inputs. Baseline v9 includes PR-01/PR-02 DDL implemented in m004–m011; later purchasing contracts must extend it through their own forward-only migrations. Preserve applied migrations.
 5. No negative stock; no silent country borrowing; no artificial `0.0001` amount for genuinely free-of-charge lines; no VAT refund based only on dispatch or invoice issuance.
 6. Source purchase VAT, inventory cost, VAT attributable to customs-cleared exports, VAT deduction, and the ultimately claimable refund are **separate amounts and ledgers**.
 7. Each merge/PR must leave the app bootable, migrations runnable, and tests passing. No large untested omnibus PR.
@@ -89,8 +89,9 @@ export-accounting/
         m006_inventory_warehouse_pools.js
         m007_inventory_receipts.js
         m008_inventory_reallocations.js
-        m008_inventory_reservations_reallocations.js
-        m009_inventory_period_closing.js
+        m009_inventory_reservations_issues.js
+        m010_inventory_period_close.js
+        m011_inventory_corrections.js
       middleware/
         auth.js
         rbac.js
@@ -343,6 +344,8 @@ docs/architecture/inventory-receipts.md and docs/pr-handoffs/PR-02B.md.
 
 **Acceptance**: report can reproduce a previously closed period exactly; close blocked by imbalance; after approved reopen, original close version remains discoverable.
 
+**Implemented (26 October 2026):** m010 adds immutable versioned physical/pool snapshots, source movement membership, explicit asset-account GL reconciliation, independent close approval and dependent reopen. Missing mappings, differences and pending/inconsistent data block close; no GL or VAT is fabricated. Historical reservations carry using business dates and recorded UTC release times. Reopen retains old versions and opens affected stock/closed accounting calendars atomically. Live reports use the prior valid close for balances; reconciliation scans and in-memory grouping remain performance work for PR-02F. See docs/architecture/inventory-close.md and docs/pr-handoffs/PR-02E.md.
+
 ### PR-02F — Reversals, adjustments, performance and release gate
 
 **Build**
@@ -352,6 +355,8 @@ docs/architecture/inventory-receipts.md and docs/pr-handoffs/PR-02B.md.
 - `npm run test:pr02`, migration-from-zero test, concurrency test, reconciliation report, OpenAPI validation and frontend build/lint.
 
 **Acceptance**: end-to-end warehouse receipt → AF allocation → reserve → dispatch → reverse → close; balances and accounting effects reconcile, even under retry or contention.
+
+**Implemented (26 October 2026):** m011 adds independently approved counts/revaluation and exact receipt/transfer/dispatch/correction reversals, with immutable source/evidence, before-balances and movement hashes. It preserves reservations, both calendars, original entries and old closes. Zero-quantity value deltas and no-orphan projection checks are enforced. Cursor movement history, grouped reconciliation, database-paged closed reports and a 1,001-layer/10,002-entry synthetic budget gate are included in test:pr02. Automatic stock-related GL/VAT policy remains explicit future purchasing work; mismatches still block close. See docs/architecture/inventory-corrections.md and docs/pr-handoffs/PR-02F.md.
 
 ## 4. Later PR families (planned now; implement after PR-01/02)
 
@@ -440,4 +445,4 @@ cd frontend && npm run lint && npm run build
 - Accounting-account policy, stock valuation and export VAT rules to receive Turkish SMMM/YMM sign-off before live use.
 - Integration with SaaP's full GL or HR/Payroll is not assumed; write domain adapters so that it remains possible.
 
-**Current sequence:** PR-00AA through PR-00C, PR-01A through PR-01C and PR-02A/PR-02B/PR-02C/PR-02D are complete. The newly authorized design baseline replaces the absent input prerequisite. Next implement PR-02E, followed by PR-02F. Continue extending the existing project and refine future baseline contracts as their PRs are implemented.
+**Current sequence:** PR-00AA through PR-00C, PR-01A through PR-01C and PR-02A through PR-02F are complete. The newly authorized design baseline replaces the absent input prerequisite. Next implement PR-03A, preserving applied m001–m011, exact corrections/reversals and retained close versions. Continue extending the existing project and refine future baseline contracts as their PRs are implemented.

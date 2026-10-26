@@ -1,4 +1,4 @@
-# PR-01 / PR-02 design baseline — version 7
+# PR-01 / PR-02 design baseline — version 9
 
 Created **21 October 2026 (Europe/Istanbul)** with the user's explicit instruction
 to write a new baseline and proceed with PR-01A. This is a new design derived
@@ -8,12 +8,12 @@ claim that future inventory features have been implemented.
 
 The tracked files in `docs/design/` are authoritative. Matching copies in
 `docs/project-root/` beside the roadmap allow its original filenames to resolve. Update both copies
-when revising this baseline. The companion SQL contains implemented PR-01A/PR-01B/PR-02A/PR-02B/PR-02C/PR-02D definitions
+when revising this baseline. The companion SQL contains implemented PR-01A/PR-01B/PR-02A/PR-02B/PR-02C/PR-02D/PR-02E/PR-02F definitions
 and clearly marked future contracts. Runtime schema changes use registered,
 forward-only JavaScript migrations; do not execute the reference SQL against
 an existing database.
 
-Revised **23 October 2026** for PR-02D reservations and FIFO dispatch. PR-02E trial balance, snapshots and close is next. Real purchase sources remain PR-03.
+Revised **26 October 2026** for PR-02F corrections, reversals and the inventory release gate. PR-02 is complete; PR-03A is next. Real purchase sources remain PR-03.
 
 ## Scope and shared contracts
 
@@ -25,7 +25,7 @@ Revised **23 October 2026** for PR-02D reservations and FIFO dispatch. PR-02E tr
 - Existing m001/m002/m003 and existing accounting records remain unchanged.
   PR-01A introduces `m004_product_foundation`; PR-01B introduces
   `m005_product_classification`. PR-02A adds `m006_inventory_foundation`.
-  PR-02B adds `m007_inventory_receipts`; PR-02C adds `m008_inventory_reallocations`. PR-02D adds `m009_inventory_reservations_issues`. Later features get new migrations; applied m001–m009 remain unchanged.
+  PR-02B adds `m007_inventory_receipts`; PR-02C adds `m008_inventory_reallocations`. PR-02D adds `m009_inventory_reservations_issues`. PR-02E adds `m010_inventory_period_close`. PR-02F adds `m011_inventory_corrections`. Later features get new migrations; applied m001–m011 remain unchanged.
 - UUID IDs use `CHAR(36)`. Every domain table carries `tenant_id` and
   `legal_entity_id`. Scoped unique keys and composite foreign keys prevent a
   relationship to another tenant/entity, even when a caller knows its UUID.
@@ -198,8 +198,9 @@ stored; there are no seeded company warehouses, pools, movements or quantities.
 Inventory period creation requires an open accounting period and uses its dates
 without duplication. Inventory status starts OPEN. Accounting status is shown
 separately, and later stock posting must check both calendars under transaction
-locks. Inventory closure/reopening/approval remains PR-02E; no such endpoint is
-exposed in PR-02A. Movement effects classify future behavior but cannot execute it.
+locks. PR-02E now implements inventory closure/reopening/approval; the original
+PR-02A metadata endpoints do not execute those workflows. Movement effects
+classify behavior but cannot execute it.
 
 Reads/writes are under `/api/v1/entities/:entityId/inventory`, including paged
 warehouses, pools, periods, movement-types, inventory-only audit and scoped calendar
@@ -207,7 +208,7 @@ choices, plus a fixed country reference. Codes, pool identity, period links and
 movement effects cannot be changed through the API. Name/location/active updates
 are audited and idempotent. No DELETE route exists. See
 `docs/architecture/inventory-foundation.md` for the exact contracts and country
-snapshot maintenance policy. PR-02B adds active/in-use stock guards; reservation guards remain future work.
+snapshot maintenance policy. PR-02B adds active/in-use stock guards; PR-02D adds reservation guards.
 
 ## PR-02B receipts and stock ledgers (implemented)
 
@@ -300,16 +301,58 @@ available balances. ADMIN-only manage/post permissions preserve reader access.
 
 No GL journal or posting request is generated: no approved dispatch accounting
 event/account policy exists yet. Invoice, dispatch, ownership transfer, customs
-and VAT effects remain distinct. PR-02E must expose unposted GL differences and
-carry outstanding reservations across periods. See
+and VAT effects remain distinct. PR-02E exposes unposted GL differences and
+carries historical outstanding reservations across periods. See
 [the reservation contract](../architecture/inventory-reservations.md).
 
-## PR-02E–02F target schema contracts (planned, not applied)
+## PR-02E reports and controlled close (implemented)
 
-| Stage | Planned records | Grain and invariants |
-|---|---|---|
-| 02E | close requests, versioned snapshots, reconciliation checkpoints | Entity/period/version, SKU/warehouse/layer/pool balances; approved prior close plus in-period movements; locked periods and controlled reopen |
-| 02F | reversals, approved adjustments, valuation changes | Exact original-event lineage; immutable history, idempotent reversal; quantity/value conservation at every affected grain |
+m010 adds seven tables (57 total): explicit reconciliation accounts, versioned
+snapshot headers/lines/event membership, period controls, reopen requests and
+retained dependent-period plans. Scoped FKs and immutable lifecycle triggers
+protect source identity and independent approval. Snapshot totals use DECIMAL(30,6).
+
+Reports start from the prior valid approved close plus later movements. Physical
+and pool quantities/values reconcile; reservations carry across month-end using
+business dates and recorded UTC release times. Versions freeze identities and
+event membership. Explicit active ASSET mappings compare posted GL with stock;
+missing mappings/differences block close. No accounting or VAT event is inferred.
+
+Prepare locks inventory and mapped GL postings through its cutoff. A different
+authorized user approves the unchanged report. Approved reopen invalidates all
+later dependent closes and opens their linked closed accounting calendars while
+retaining superseded versions. Reclose proceeds chronologically with new versions.
+Financial detail has a separate permission boundary from inventory reads.
+
+See [the close contract](../architecture/inventory-close.md) for exact permissions,
+UTC reservation cutoff, calendar coordination, schema/API and performance limits.
+Stock source entry remains fixture-only. PR-02F adds value-only adjustments
+and reversal lineage to these calculations without changing old snapshots.
+
+## PR-02F stock corrections and release gate (implemented)
+
+m011 adds inventory_corrections and inventory_correction_lines (59 total), reviewed
+COUNT/REVALUATION/REVERSAL plans and exact original-event links. Event dates are
+derived from retained source dates and indexed; no historical source date changes.
+Physical/pool ledgers now support value-only deltas, while projections reject
+negative stock/value and value without quantity. The complete evolved m007–m009
+schema is verified by m011; m010 retains close verification and immutable versions.
+
+Counts value variance from remaining carrying cost, or original unit cost on an
+empty source. Revaluation requires positive quantity. Exact reversals retain every
+source entry and original cost, once per event; reversal of a reversal is blocked.
+Returned dispatch stock is unreserved; original reservation/issue history remains.
+A different reviewer approves; posting rechecks source fingerprints, outstanding
+reservations, dates and both calendars under the entity lock. No automatic GL or
+VAT event is inferred. Audit and idempotency remain atomic with stock changes.
+
+Movement history uses scoped cursor pagination. Closed reports aggregate/page in
+MySQL, and live projection checks use grouped ledger totals. The combined test:pr02
+gate includes fresh/upgrade migrations, concurrency, domain regressions, browsers
+and a synthetic 1,001-layer/10,002-entry performance gate. Read the [correction
+contract](../architecture/inventory-corrections.md) for budgets and remaining limits.
+
+## Shared inventory invariants and future extensions
 
 Use scoped FKs to **product_skus**, never product families, for movements,
 layers, balances and reservations. Warehouse pools share a physical warehouse.
@@ -325,10 +368,9 @@ availability inside the same transaction. Event lines, projections, audit,
 idempotency and any required accounting request commit together. Do not report
 GL-posted until its posting request links to a POSTED journal.
 
-Final DDL, status enums, event columns and indexes for these future stages must
-be added and tested in their own migrations. This baseline deliberately records
-their required grains/relationships without installing unused inventory tables.
-It is not a substitute for the PR-02 concurrency and reconciliation release gate.
+PR-01/PR-02 DDL and release checks are implemented through m011. PR-03 onward
+must extend these contracts through tested forward migrations while preserving
+old source and close history. Purchase/VAT integration remains future work.
 
 ## Journals and later purchase invoices
 

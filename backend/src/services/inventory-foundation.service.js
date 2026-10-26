@@ -76,6 +76,10 @@ export async function save(context, kind, body, id) {
       const { rows } = await tx.query('SELECT status FROM accounting_periods WHERE tenant_id = ? AND legal_entity_id = ? AND id = ? FOR UPDATE', [...scopeArgs(context), item.accountingPeriodId]);
       if (!rows[0]) throw notFound();
       if (rows[0].status !== 'OPEN') throw new AppError(409, 'ACCOUNTING_PERIOD_CLOSED', 'Choose an open accounting period.');
+      const { rows: later } = await tx.query(`SELECT p.id FROM inventory_periods p JOIN accounting_periods a ON a.tenant_id = p.tenant_id AND a.legal_entity_id = p.legal_entity_id AND a.id = p.accounting_period_id
+        JOIN accounting_periods n ON n.tenant_id = a.tenant_id AND n.legal_entity_id = a.legal_entity_id AND n.id = ?
+        WHERE p.tenant_id = ? AND p.legal_entity_id = ? AND a.start_date > n.start_date AND p.status <> 'OPEN' LIMIT 1`, [item.accountingPeriodId, ...scopeArgs(context)]);
+      if (later.length) throw new AppError(409, 'LATER_PERIOD_LOCKED', 'Reopen later inventory periods before adding an earlier period.');
       columns = { accounting_period_id: item.accountingPeriodId };
     } else columns = { name: item.name, active: item.active, ...(kind === 'warehouses' && { location: item.location }) };
     if (updating) await tx.query(`UPDATE ${table} SET ${Object.keys(columns).map(c => `${c} = ?`).join(', ')} WHERE tenant_id = ? AND legal_entity_id = ? AND id = ?`, [...Object.values(columns), ...scopeArgs(context), id]);

@@ -1,9 +1,8 @@
 # PR-00C handoff — Accounting foundation
 
-**Current status — 23 October 2026:** PR-02D is implemented; see the
-[PR-02D handoff](PR-02D.md). PR-02E is next. Its newly authorized design baseline resolves the
-earlier absent-input prerequisite. Journals now have no fixed line-count ceiling.
-The dated implementation/check results below are historical.
+**Current status — 26 October 2026:** PR-02F and the inventory release gate are
+implemented; see the [PR-02F handoff](PR-02F.md). PR-03A is next. The dated results
+below describe the PR-00C delivery and its original next-step context.
 
 Implemented and verified on **20 October 2026 (Europe/Istanbul)**, extending the
 existing application. PR-00AA/00A/00B remain intact. The local app is running at

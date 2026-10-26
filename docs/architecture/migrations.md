@@ -222,3 +222,30 @@ Original alias source plus versioned candidates retain review history; a nullabl
 current-source key and CHECK enforce one active proposal per source. GTİP windows
 are guarded transactionally in the service under the shared entity lock.
 Applied m001–m004 sources/history are unchanged. No catalogue data is seeded.
+
+## PR-02E forward migration
+
+m010_inventory_period_close adds seven empty domain tables (57 total), explicit
+asset mappings, immutable snapshot/event membership, close controls and dependent
+reopen history. Five new permissions are granted only to existing ADMIN roles.
+Its verifier checks the new objects; m009 retains verification of evolved receipt,
+allocation and issue structure, and all earlier verification remains active.
+No prior migration file, history row or business record is rewritten.
+
+Back up the repository-owned database before applying with db:migrate:local.
+Re-running verifies without reapplying. Preserve applied m001–m010; implement
+PR-02F in a new migration. See [the close contract](inventory-close.md) for
+independent approvals and inventory/accounting calendar coordination.
+
+## PR-02F forward migration
+
+m011_inventory_corrections adds two tables (59 total), correction/reversal event
+links, indexed immutable derived event dates, value-only ledger entries and
+no-orphan projection checks. Three new permissions are granted only to ADMIN.
+The date backfill copies source posting dates; original source/ledger fields and
+applied m001–m010 files/history are retained. m011 verifies the complete evolved
+m007–m009 contract through the explicit handoff; m010 still verifies closes.
+
+Back up before db:migrate:local; reruns verify without reapplying. Preserve
+applied m001–m011. PR-03A must use a new migration and retain correction and
+snapshot history. See [corrections](inventory-corrections.md) and the test:pr02 gate.

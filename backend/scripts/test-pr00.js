@@ -11,7 +11,7 @@ const database = `export_accounting_test_${suffix}`;
 const user = `export_test_${suffix}`;
 const password = randomBytes(32).toString('hex');
 const mode = process.argv[2] ?? 'foundation';
-if (!['reservations', 'reallocations', 'receipts', 'inventory', 'classification', 'products', 'foundation', 'auth', 'browser', 'accounting', 'journal-performance', 'journal-browser'].includes(mode)) throw new Error('Unsupported test mode.');
+if (!['corrections', 'inventory-performance', 'closing', 'reservations', 'reallocations', 'receipts', 'inventory', 'classification', 'products', 'foundation', 'auth', 'browser', 'accounting', 'journal-performance', 'journal-browser'].includes(mode)) throw new Error('Unsupported test mode.');
 const normalize = value => realpathSync(value).replaceAll('\\', '/').replace(/\/$/, '').toLowerCase();
 let admin;
 let createdDatabase = false;
@@ -33,7 +33,7 @@ try {
   createdUser = true;
   await admin.query(`GRANT ALL PRIVILEGES ON ${mysql.escapeId(database)}.* TO ?@?`, [user, '127.0.0.1']);
   console.log(`Running ${mode} tests in a newly created, isolated test schema.`);
-  const args = mode === 'reservations' ? ['--test', 'tests/inventory-reservations.integration.js'] : mode === 'reallocations' ? ['--test', 'tests/inventory-reallocations.integration.js'] : mode === 'receipts' ? ['--test', 'tests/inventory-receipts.integration.js'] : mode === 'inventory' ? ['--test', 'tests/inventory-foundation.integration.js'] : mode === 'classification' ? ['--test', 'tests/product-classification.integration.js'] : mode === 'products' ? ['--test', 'tests/products.integration.js'] : mode === 'journal-performance' ? ['--test', 'tests/journal-performance.integration.js']
+  const args = mode === 'corrections' ? ['--test', 'tests/inventory-corrections.integration.js'] : mode === 'inventory-performance' ? ['--test', 'tests/inventory-performance.integration.js'] : mode === 'closing' ? ['--test', 'tests/inventory-close.integration.js'] : mode === 'reservations' ? ['--test', 'tests/inventory-reservations.integration.js'] : mode === 'reallocations' ? ['--test', 'tests/inventory-reallocations.integration.js'] : mode === 'receipts' ? ['--test', 'tests/inventory-receipts.integration.js'] : mode === 'inventory' ? ['--test', 'tests/inventory-foundation.integration.js'] : mode === 'classification' ? ['--test', 'tests/product-classification.integration.js'] : mode === 'products' ? ['--test', 'tests/products.integration.js'] : mode === 'journal-performance' ? ['--test', 'tests/journal-performance.integration.js']
     : mode === 'accounting' ? ['--test', 'tests/money.test.js', 'tests/accounting.integration.js'] : ['browser', 'journal-browser'].includes(mode) ? ['scripts/test-auth-browser.js'] : mode === 'auth'
     ? ['--test', 'tests/auth.integration.js']
     : ['--test', 'tests/bootstrap.test.js', 'tests/foundation.test.js', 'tests/db.integration.js'];

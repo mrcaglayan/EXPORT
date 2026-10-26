@@ -38,7 +38,7 @@ test('PR-02A warehouse, pool, period and movement metadata', { timeout: 120000 }
     const { rows: old } = await query(`SELECT * FROM schema_migrations WHERE migration_key IN (${history.map(() => '?').join(',')}) ORDER BY migration_key`, history.map(row => row.migration_key));
     assert.deepEqual(old, history);
     assert.deepEqual((await query('SELECT * FROM accounting_periods')).rows, beforePeriods);
-    assert.equal((await query('SHOW TABLES')).rows.length, 50);
+    assert.equal((await query('SHOW TABLES')).rows.length, 59);
     for (const kind of ['warehouses', 'pools', 'periods', 'movement-types']) assert.equal((await inventory.list(ctx(), kind, {})).total, 0);
     assert.ok((await permissionsFor(ctx().identity, ctx().entityId)).includes('inventory.configure'));
     assert.ok(!(await permissionsFor(viewer().identity, f.secondEntity)).includes('inventory.configure'));

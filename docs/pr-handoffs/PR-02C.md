@@ -1,8 +1,8 @@
 # PR-02C handoff — Country allocation and controlled borrowing
 
-**Current status — 23 October 2026:** PR-02D is implemented; see the
-[PR-02D handoff](PR-02D.md). PR-02E is next. The dated results below describe
-the PR-02C delivery and its original next-step context.
+**Current status — 26 October 2026:** PR-02F and the inventory release gate are
+implemented; see the [PR-02F handoff](PR-02F.md). PR-03A is next. The dated results
+below describe the PR-02C delivery and its original next-step context.
 
 Completed **23 October 2026 (Europe/Istanbul)**. Next is **PR-02D: reservations,
 issues, FIFO and no-negative-stock**.

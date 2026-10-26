@@ -35,12 +35,12 @@ Inventory periods reference one existing accounting period through a scoped
 composite FK and a unique entity/accounting-period key. Code/start/end dates are
 read from that calendar; duplicate dates are not maintained. Creating the link
 requires an OPEN accounting period, checked under the common entity lock and a
-period row lock. No calendar mutation is exposed by the inventory API.
+period row lock. Calendar dates remain fixed; PR-02E adds controlled status changes.
 
-Inventory status starts OPEN; the schema reserves IN_REVIEW and CLOSED for
-PR-02E. This stage exposes no inventory close/reopen action, snapshot or approval.
+Inventory status starts OPEN. PR-02E now implements IN_REVIEW and CLOSED through
+[independent close/reopen approval and snapshots](inventory-close.md).
 Accounting and inventory statuses are shown separately: closing the GL calendar
-does not claim that inventory was reconciled. Future posting must check **both**
+does not claim that inventory was reconciled. Stock posting checks **both**
 statuses inside the posting transaction. Accounting periods already prohibit
 overlapping calendar dates and have no editable-date endpoint.
 

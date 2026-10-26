@@ -6,6 +6,9 @@ import InventoryPanel from './InventoryPanel'
 import StockPanel from './StockPanel'
 import AllocationPanel from './AllocationPanel'
 const ReservationPanel = lazy(() => import('./ReservationPanel'))
+const PeriodClosePanel = lazy(() => import('./PeriodClosePanel'))
+const CorrectionPanel = lazy(() => import('./CorrectionPanel'))
+const MovementPanel = lazy(() => import('./CorrectionPanel').then(module => ({ default: module.MovementPanel })))
 const IssuesPanel = lazy(() => import('./ReservationPanel').then(module => ({ default: module.IssuesPanel })))
 
 const stockTabs = [['receipts', 'Receipts'], ['balances', 'Stock balances'], ['pool-balances', 'Pool balances'], ['layers', 'Source layers'], ['physical-ledger', 'Physical ledger'], ['pool-ledger', 'Pool ledger']]
@@ -17,7 +20,7 @@ export default function InventoryPage() {
   const [revision, setRevision] = useState(0)
   const tabList = useRef(null)
   const refresh = useCallback(() => setRevision(value => value + 1), [])
-  const tabs = [['warehouses', 'Warehouses'], ['pools', 'Destination pools'], ['periods', 'Inventory periods'], ['movement-types', 'Movement types'], ['reallocations', 'Allocation & borrowing'], ['reservations', 'Reservations'], ['issues', 'Dispatches'], ...stockTabs, ...(can('inventory.audit.read') ? [['audit-events', 'Audit trail']] : [])]
+  const tabs = [['warehouses', 'Warehouses'], ['pools', 'Destination pools'], ['periods', 'Inventory periods'], ['close', 'Trial balance & close'], ['corrections', 'Corrections'], ['movements', 'Movement history'], ['movement-types', 'Movement types'], ['reallocations', 'Allocation & borrowing'], ['reservations', 'Reservations'], ['issues', 'Dispatches'], ...stockTabs, ...(can('inventory.audit.read') ? [['audit-events', 'Audit trail']] : [])]
   useEffect(() => {
     const element = tabList.current
     const showSelected = () => {
@@ -43,7 +46,7 @@ export default function InventoryPage() {
     </div>
     <div role="tabpanel" id="inventory-panel" aria-labelledby={`inventory-tab-${tab}`}>
       <Suspense fallback={<p role="status" className="mt-6 text-sm">Loading inventory view…</p>}>
-      {tab === 'reservations' ? <ReservationPanel base={base} revision={revision} onSaved={refresh} /> : tab === 'issues' ? <IssuesPanel base={base} revision={revision} /> : tab === 'reallocations' ? <AllocationPanel base={base} revision={revision} onSaved={refresh} /> : stockTabs.some(([key]) => key === tab) ? <StockPanel key={tab} base={base} resource={tab} revision={revision} /> : <InventoryPanel key={tab} base={base} resource={tab} revision={revision} onSaved={refresh} canConfigure={can('inventory.configure')} />}
+      {tab === 'corrections' ? <CorrectionPanel base={base} revision={revision} onSaved={refresh} /> : tab === 'movements' ? <MovementPanel base={base} revision={revision} /> : tab === 'close' ? <PeriodClosePanel base={base} revision={revision} onSaved={refresh} /> : tab === 'reservations' ? <ReservationPanel base={base} revision={revision} onSaved={refresh} /> : tab === 'issues' ? <IssuesPanel base={base} revision={revision} /> : tab === 'reallocations' ? <AllocationPanel base={base} revision={revision} onSaved={refresh} /> : stockTabs.some(([key]) => key === tab) ? <StockPanel key={tab} base={base} resource={tab} revision={revision} /> : <InventoryPanel key={tab} base={base} resource={tab} revision={revision} onSaved={refresh} canConfigure={can('inventory.configure')} />}
       </Suspense>
     </div>
   </Card>

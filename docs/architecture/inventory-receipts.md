@@ -142,6 +142,11 @@ See [controlled borrowing](inventory-reallocations.md) for the current contract.
 PR-02D is implemented by m009: [reservations and dispatch](inventory-reservations.md)
 add outstanding-stock protection, signed physical/pool consumption and retained
 source lineage. Current balances expose reserved and available quantities.
-PR-02E next adds closing snapshots and explicit GL comparison; PR-02F adds
-reversals/adjustments and the comprehensive gate. Preserve applied m001–m009 and
+PR-02E implements [closing snapshots and explicit GL comparison](inventory-close.md); PR-02F adds
+reversals/adjustments and the comprehensive gate. Preserve applied m001–m010 and
 keep baseline/OpenAPI copies synchronized.
+
+PR-02F is now implemented: see [corrections and release gate](inventory-corrections.md).
+It retains exact original receipt/transfer/issue sources and reservation counters,
+adds independent count/revaluation/reversal approval and cursor movement reads,
+and verifies all inventory stages. Preserve applied m001–m011. PR-03A is next.
