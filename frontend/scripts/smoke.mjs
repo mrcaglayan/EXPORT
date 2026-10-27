@@ -1,3 +1,6 @@
+import { checkInvoices, checkInvoiceReader } from './invoices-smoke.mjs'
+import {checkPurchaseReceipts} from './purchase-receipts-smoke.mjs'
+import { checkPurchasing, checkPurchasingReader } from './purchasing-smoke.mjs'
 import assert from 'node:assert/strict'
 import { mkdir, readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
@@ -31,7 +34,7 @@ await mkdir(artifacts, { recursive: true })
 
 function waitForPageContent(title) {
   const name = title === 'Dashboard' ? /Every export starts with/
-    : title === 'Settings' ? 'Workspace connection' : title === 'Accounting' ? 'Chart of accounts' : title === 'Products' ? 'Product catalogue' : title === 'Inventory' ? 'Inventory setup' : `A home for your ${title.toLowerCase()}`
+    : title === 'Settings' ? 'Workspace connection' : title === 'Accounting' ? 'Chart of accounts' : title === 'Products' ? 'Product catalogue' : title === 'Purchasing' ? 'Purchasing' : title === 'Inventory' ? 'Inventory setup' : `A home for your ${title.toLowerCase()}`
   return page.getByRole('heading', { level: 1, name }).waitFor()
 }
 
@@ -66,7 +69,7 @@ try {
   }
   for (const [route, title] of [
     ['/', 'Dashboard'], ['/products', 'Products'], ['/inventory', 'Inventory'],
-    ['/exports', 'Exports'], ['/vat', 'VAT'], ['/accounting', 'Accounting'], ['/settings', 'Settings'],
+    ['/purchasing', 'Purchasing'], ['/exports', 'Exports'], ['/vat', 'VAT'], ['/accounting', 'Accounting'], ['/settings', 'Settings'],
   ]) {
     const response = await page.goto(`${base}${route}`)
     assert.equal(response.status(), 200)
@@ -85,6 +88,9 @@ try {
     await checkReservations(page, base, artifacts)
     await checkStockClose(page, base, artifacts, browser)
     await checkCorrections(page, base, artifacts, browser)
+    await checkPurchasing(page, base, artifacts, browser)
+    await checkInvoices(page, base, artifacts, browser)
+    await checkPurchaseReceipts(page, base, artifacts, browser)
     await page.goto(base)
   }
   await page.getByRole('link', { name: 'Explore products', exact: true }).click()
@@ -240,13 +246,15 @@ try {
     assert.equal(await page.getByRole('button', { name: /Approve correction|Post correction|Cancel correction|New physical count/ }).count(), 0)
     await page.getByRole('tab', { name: 'Movement history', exact: true }).click()
     await page.getByRole('heading', { name: 'Stock integrity: MATCHED', exact: true }).waitFor()
+    await checkPurchasingReader(page, base)
+    await checkInvoiceReader(page, base)
     await page.getByRole('button', { name: 'Open navigation' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Sign out', exact: true }).click()
     await page.getByRole('heading', { name: 'Sign in', exact: true }).waitFor()
     console.log('PASS: inventory reader can inspect stock, reservations, dispatches and retained close versions without financial detail or write controls.')
   }
   assert.deepEqual(failures, [])
-  console.log('PASS: login errors/success, protected return route, seven routes, request IDs, readiness states, mobile account controls, logout and browser runtime; isolated mode also tests entity switching, scoped editing and viewer access.')
+  console.log('PASS: login errors/success, protected return route, eight routes, request IDs, readiness states, mobile account controls, logout and browser runtime; isolated mode also tests entity switching, scoped editing and viewer access.')
 } catch (error) {
   console.error('Browser check failed at', new URL(page.url()).pathname, 'with alerts:', await page.getByRole('alert').allTextContents())
   await page.screenshot({ path: `${artifacts}/smoke-failure.png`, fullPage: true })

@@ -1,0 +1,33 @@
+import { useState } from 'react'
+import { useAuth } from '@/auth/auth-context'
+import { Button } from '@/components/ui/button'
+import { Field, Feedback, Table, Cell, inputStyle } from '@/pages/accounting/accounting-ui'
+import { useAccountingMutation } from '@/pages/accounting/useAccounting'
+import { useProducts, useDebouncedValue } from '@/pages/products/useProducts'
+import { ProductFormShell as Form, ProductLoadState as LoadState, ProductPager as Pager } from '@/pages/products/product-ui'
+import ProductPicker from '@/pages/products/ProductPicker'
+
+export default function PartnerPanel({ base, revision, onSaved, selected, onSelect }) {
+  const { can } = useAuth()
+  const [creating, setCreating] = useState(false), [editing, setEditing] = useState(false), [q, setQ] = useState(''), [offset, setOffset] = useState(0)
+  const search = useDebouncedValue(q)
+  const list = useProducts(base, 'partners', { q: search, offset, limit: 25 }, revision, !selected)
+  const detail = useProducts(base, `partners/${selected}`, {}, revision, !!selected)
+  const item = detail.data?.item
+  if (creating || editing && item) return <PartnerForm base={base} revision={revision} item={editing ? item : null} onSaved={onSaved} onCreated={id => { setCreating(false); setEditing(false); onSelect(id) }} onCancel={() => { setCreating(false); setEditing(false) }} />
+  if (selected) return <div className="space-y-4"><Button variant="outline" onClick={() => onSelect(null)}>Back to trading partners</Button><LoadState result={detail} label="trading partner" />{item && <><h2 className="break-words text-lg font-semibold">{item.code} — {item.name}</h2><p className="text-sm">{item.kind} · {item.active ? 'Active' : 'Inactive'}</p><dl className="grid gap-3 text-sm sm:grid-cols-2">{[['Country', item.countryCode], ['Tax identifier', item.taxIdentifier], ['Tax office', item.taxOffice], ['Address', item.address], ['Email', item.email], ['Phone', item.phone], ['Catalogue supplier', item.supplierCode && `${item.supplierCode} — ${item.supplierName}${item.supplierActive ? '' : ' (inactive)'}`]].map(([label, value]) => <div key={label} className="min-w-0"><dt className="font-medium">{label}</dt><dd className="mt-1 whitespace-pre-wrap break-words text-slate-600">{value || '—'}</dd></div>)}</dl>{can('purchasing.manage') && <Button variant="outline" onClick={() => setEditing(true)}>Edit partner</Button>}</>}</div>
+  return <div className="space-y-4"><p className="text-sm text-slate-600">Maintain supplier and customer details. Link an existing catalogue supplier to retain its product mappings, or create its identity with the new partner.</p>{can('purchasing.manage') && <Button onClick={() => setCreating(true)}>New trading partner</Button>}<div className="max-w-md"><Field label="Search trading partners" maxLength={160} value={q} onChange={e => { setQ(e.target.value); setOffset(0) }} /></div><LoadState result={list} label="trading partners" />{list.data && <><Table columns={['Code / name', 'Role', 'Country / tax ID', 'Status', 'Details']} rows={list.data.items} empty="No trading partners yet." render={r => <><Cell>{r.code}<br />{r.name}</Cell><Cell>{r.kind}</Cell><Cell>{r.countryCode}<br />{r.taxIdentifier ?? '—'}</Cell><Cell>{r.active ? 'Active' : 'Inactive'}</Cell><Cell><Button variant="outline" aria-label={`View partner ${r.code}`} onClick={() => onSelect(r.id)}>View</Button></Cell></>} /><Pager data={list.data} offset={offset} setOffset={setOffset} /></>}</div>
+}
+function PartnerForm({ base, revision, item, onSaved, onCreated, onCancel }) {
+  const [form, setForm] = useState(item ? Object.fromEntries(['name', 'countryCode', 'taxIdentifier', 'taxOffice', 'address', 'email', 'phone', 'active'].map(k => [k, item[k] ?? ''])) : { code: '', name: '', kind: 'SUPPLIER', supplierId: null, countryCode: 'TR', taxIdentifier: '', taxOffice: '', address: '', email: '', phone: '' })
+  const action = useAccountingMutation(base, onSaved)
+  const set = (key, value) => setForm(current => ({ ...current, [key]: value }))
+  async function submit(e) { e.preventDefault(); const result = await action.submit(item ? `partners/${item.id}` : 'partners', form, 'Trading partner saved.', item ? 'patch' : 'post'); if (result) onCreated(result.item.id) }
+  return <Form aria-label="Trading partner form" onSubmit={submit}><h2 className="text-lg font-semibold">{item ? 'Edit trading partner' : 'New trading partner'}</h2><fieldset disabled={action.busy} className="mt-4 min-w-0 space-y-4">
+    {!item && <><div className="grid gap-3 sm:grid-cols-2"><Field label="Partner code" required maxLength={40} value={form.code} onChange={e => set('code', e.target.value)} /><Field label="Partner role"><select className={inputStyle} value={form.kind} onChange={e => setForm(f => ({ ...f, kind: e.target.value, supplierId: null }))}>{['SUPPLIER', 'CUSTOMER', 'BOTH'].map(k => <option key={k}>{k}</option>)}</select></Field></div>{form.kind !== 'CUSTOMER' && <><ProductPicker base={base} resource="suppliers" revision={revision} label="Existing catalogue supplier" value={form.supplierId} onChange={v => set('supplierId', v)} /><p className="text-xs text-slate-600">Leave the supplier selection empty to create one with this partner’s code and name. Partner role, code and supplier link are retained after creation.</p></>}</>}
+    <div className="grid gap-3 sm:grid-cols-2"><Field label="Partner name" required maxLength={160} value={form.name} onChange={e => set('name', e.target.value)} /><Field label="Country code" required pattern="[A-Z]{2}" maxLength={2} value={form.countryCode} onChange={e => set('countryCode', e.target.value.toUpperCase())} /><Field label="Tax identifier" maxLength={40} value={form.taxIdentifier} onChange={e => set('taxIdentifier', e.target.value)} /><Field label="Tax office" maxLength={160} value={form.taxOffice} onChange={e => set('taxOffice', e.target.value)} /><Field label="Partner email" type="email" maxLength={254} value={form.email} onChange={e => set('email', e.target.value)} /><Field label="Phone" maxLength={80} value={form.phone} onChange={e => set('phone', e.target.value)} /></div>
+    <Field label="Address"><textarea className={inputStyle} maxLength={1000} rows={3} value={form.address} onChange={e => set('address', e.target.value)} /></Field>
+    {item && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.active} onChange={e => set('active', e.target.checked)} />Active partner</label>}
+    <Feedback error={action.error} /><div className="flex flex-wrap gap-2"><Button type="submit">Save trading partner</Button><Button type="button" variant="outline" onClick={onCancel}>Cancel partner form</Button></div>
+  </fieldset></Form>
+}

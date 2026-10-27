@@ -64,6 +64,7 @@ export function journal(body) {
   const totalCredit = sumAmounts(lines.map(l => l.credit));
   if (totalDebit !== totalCredit) throw new AppError(422, 'UNBALANCED_JOURNAL', 'Journal debits and credits must match exactly.');
   const sourceModule = code(body.sourceModule);
+  if(sourceModule==='PURCHASE_INVOICE')throw new AppError(422,'SOURCE_RESERVED','Purchase invoice journals are created only by the approved goods receipt workflow.');
   const sourceId = text(body.sourceId, 128);
   if (!/^[A-Za-z0-9._:-]+$/.test(sourceId)) throw invalid();
   return { documentDate: date(body.documentDate), postingDate: date(body.postingDate), currency: currency(body.currency),

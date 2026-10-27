@@ -23,11 +23,12 @@ test('PR-02F exact reversals, approved stock corrections and retained close hist
  t.after(closePool);await runMigrations({migrations:migrations.slice(0,10)});const x=await setup(),{ctx,reviewer,pools,layerId,periods}=x;
  const {rows:history}=await query('SELECT * FROM schema_migrations ORDER BY migration_key'),{rows:oldEvents}=await query('SELECT * FROM inventory_events ORDER BY id'),{rows:oldStock}=await query('SELECT * FROM inventory_balances');
  await t.test('forward migration backfills only derived event dates, retains history and verifies rerun/tampering',async()=>{
-  await runMigrations();await runMigrations();assert.equal((await query('SHOW TABLES')).rows.length,59);
-  assert.deepEqual((await query("SELECT * FROM schema_migrations WHERE migration_key <> 'm011_inventory_corrections' ORDER BY migration_key")).rows,history);assert.deepEqual((await query('SELECT * FROM inventory_balances')).rows,oldStock);
+   const upgradeCorrections=options=>runMigrations({...options,migrations:migrations.slice(0,11)});
+   await upgradeCorrections();await upgradeCorrections();assert.equal((await query('SHOW TABLES')).rows.length,59);
+  assert.deepEqual((await query("SELECT * FROM schema_migrations WHERE migration_key NOT IN ('m011_inventory_corrections','m012_purchasing_foundation') ORDER BY migration_key")).rows,history);assert.deepEqual((await query('SELECT * FROM inventory_balances')).rows,oldStock);
   const current=(await query('SELECT * FROM inventory_events ORDER BY id')).rows;assert.deepEqual(current.map(({correction_id,reverses_event_id,posting_date,...r})=>r),oldEvents);assert.equal(current[0].posting_date,'2026-01-01');
-  const tr=triggers.find(t=>t[0]==='correction_line_insert');await getMigrationPool().query(`DROP TRIGGER ${tr[0]}`);try{await assert.rejects(runMigrations(),/trigger differs/);}finally{await getMigrationPool().query(`CREATE TRIGGER ${tr[0]} BEFORE ${tr[1]} ON ${tr[2]} FOR EACH ROW ${tr[3]}`);}await runMigrations();
-  await query("UPDATE schema_migrations SET status = 'running' WHERE migration_key = 'm011_inventory_corrections'");await assert.rejects(runMigrations(),{code:'MIGRATION_RECOVERY_REQUIRED'});await runMigrations({retryKey:'m011_inventory_corrections'});await runMigrations();
+   const tr=triggers.find(t=>t[0]==='correction_line_insert');await getMigrationPool().query(`DROP TRIGGER ${tr[0]}`);try{await assert.rejects(upgradeCorrections(),/trigger differs/);}finally{await getMigrationPool().query(`CREATE TRIGGER ${tr[0]} BEFORE ${tr[1]} ON ${tr[2]} FOR EACH ROW ${tr[3]}`);}await upgradeCorrections();
+   await query("UPDATE schema_migrations SET status = 'running' WHERE migration_key = 'm011_inventory_corrections'");await assert.rejects(upgradeCorrections(),{code:'MIGRATION_RECOVERY_REQUIRED'});await upgradeCorrections({retryKey:'m011_inventory_corrections'});await runMigrations();
  });
  const request=(kind,extra={},context=ctx())=>corrections.create(context,{reference:randomUUID(),kind,postingDate:'2026-01-15',reason:'Reviewed synthetic correction',evidence:'Synthetic count sheet or valuation approval',...extra});
  const decision=(id,action,context=reviewer())=>corrections.act(context,id,action,{reason:'Independent evidence checked'});

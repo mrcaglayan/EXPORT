@@ -108,5 +108,5 @@ integration case exercises correctness, not a production latency guarantee.
 
 PR-02F implements [reversals, adjustments/revaluation and the inventory
 release/performance gate](inventory-corrections.md), including value-only movements
-and exact event lineage while preserving old snapshots. PR-03A is next.
+and exact event lineage while preserving old snapshots. PR-03A/03B purchasing and invoice staging are implemented through m013; PR-03C is now implemented in m014; PR-04A is next. See [purchase receipt/accounting](purchase-receipts.md). See [purchasing](purchasing-foundation.md).
 Receipt entry stays fixture-only until authorized purchasing integration in PR-03.

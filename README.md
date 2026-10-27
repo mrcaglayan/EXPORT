@@ -36,7 +36,16 @@ and independent close/reopen approval.
 PR-02F adds reviewed counts/revaluation, exact event reversals, cursor movement
 history, stock integrity checks and the combined inventory release gate.
 
-**Next: PR-03A — trading partners, contracts, purchase requests/orders and approvals.**
+PR-03A adds linked trading partners, EBYS contracts, multi-item purchase requests
+and orders with independent approval and exact source quantity commitments.
+
+PR-03B adds immutable incoming supplier XML staging, UUID deduplication, bulk SKU
+mapping, approved-order matching and independent decisions with retained revisions.
+
+PR-03C adds independently reviewed commercial resolutions, complete goods receipts,
+exact stock cost, explicit VAT treatment and atomic balanced invoice journals.
+
+**Next: PR-04A — packing-list intake, export cards, allocations and shipments.**
 The user-authorized [new design baseline](docs/design/PR01_PR02_database_specification.md)
 and [SQL reference](docs/design/PR01_PR02_schema.sql) were written on 21 October
 2026; the originally referenced files were not supplied.
@@ -549,3 +558,75 @@ npm --prefix backend run test:pr02
 
 The final command verifies all PR-02 stages and earlier dependencies in disposable
 schemas. It includes the browser gate once; do not run another browser gate beside it.
+
+## PR-03A purchasing
+
+Open **http://localhost:5173/purchasing** or choose **Purchasing** in the sidebar.
+Create or link a trading partner, submit supplier contracts and multi-item purchase
+requests with EBYS references, then have another authorized user approve them.
+Purchase orders use the approved request's stable source lines and remaining
+quantities; pending/approved orders count against those quantities. Zero-price
+lines require a free-goods reason. Order amounts are exact net currency amounts.
+
+Submitted content and supplier/SKU snapshots are retained; cancellation and a new
+reference replace editing. Rejected/cancelled orders release request quantities.
+Approval records the internal decision. Invoice import, real goods receipt and
+automatic 153/191/320 integration continue in PR-03B/PR-03C. No real supplier,
+request, order, invoice, stock or financial data is seeded.
+
+~~~text
+npm --prefix backend run test:pr03a
+npm --prefix backend run test:pr03a:browser
+npm --prefix backend run test:pr03a:release
+~~~
+
+See [the purchasing contract](docs/architecture/purchasing-foundation.md) and
+[PR-03A handoff](docs/pr-handoffs/PR-03A.md). The four new purchasing permissions
+are explicit ADMIN grants within existing assignments. Independent approval
+requires a second authorized real user; no additional local account is created.
+
+## PR-03B incoming purchase invoice imports
+
+Open **http://localhost:5173/purchasing?view=invoices**. Configure the company's
+receiving VKN/TCKN, stage an incoming supplier Invoice XML export and retain
+original source lines. Bulk/manual/verified-exact-alias mapping connects those
+lines to an approved order. Review checks recipient, supplier, units, quantities,
+prices, VAT arithmetic and other invoice commitments. An independent person must
+approve matching. All source, mapping revisions and decision cycles are retained.
+
+The supplied EGT supplier XML parses with its zero-rate/exemption and eight-place
+trailing-zero prices. DEK's document discount/line-price bases are retained as
+blocking exceptions. The earlier outgoing XML is only an export-format reference.
+The implementation inspected actual samples read-only and did not import or seed
+them. A DEK source subsequently appeared during local app use and was preserved
+as STAGED with its three lines and blocking discount exceptions.
+See [the import contract](docs/architecture/purchase-invoice-staging.md) for
+supported structures, source rounding, security/resource limits and discrepancies.
+
+~~~text
+npm --prefix backend run test:pr03b
+npm --prefix backend run test:pr03b:browser
+npm --prefix backend run test:pr03b:release
+~~~
+
+m013 adds six tables (69 total) and four explicit invoice permissions. XML source,
+review and mapping audit commit atomically. No stock/GL/VAT posting occurs in this
+step; PR-03C supplies that adapter with explicit mismatch handling. Applied
+m001–m013 remain frozen. See [PR-03B handoff](docs/pr-handoffs/PR-03B.md).
+
+## PR-03C purchase receipts
+
+Purchasing → Invoice imports now includes explicit posting account configuration,
+commercial resolution requests/reviews, goods receipt preview/request/approval,
+and atomic stock plus goods/VAT/supplier payable journals. Multi-item source
+lines retain order, stock-layer and journal lineage. Exact source costs survive
+unit-cost rounding; deductible/capitalized/zero VAT and dated currency conversion
+remain explicit accounting choices. No real receipt or journal is posted by setup.
+
+Run `npm --prefix backend run test:pr03c` or the full
+`npm --prefix backend run test:pr03c:release`. m014 adds four tables (73 total);
+applied m001–m013 remain frozen. OpenAPI 0.15.0 documents 161 paths.
+See [the receipt contract](docs/architecture/purchase-receipts.md) and
+[PR-03C handoff](docs/pr-handoffs/PR-03C.md) for verification and boundaries.
+Posted purchases require a future coordinated financial reversal; partial physical
+receipts/accruals and credit notes are outside this complete-invoice workflow.

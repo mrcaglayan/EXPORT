@@ -1,0 +1,37 @@
+import {Router} from 'express';
+import {authConfiguration,requireAuth,csrfProtection} from '../middleware/auth.js';
+import {entityId} from '../validators/auth.validators.js';
+import * as invoices from '../services/purchase-invoices.service.js';
+import * as receipts from '../services/purchase-receipts.service.js';
+import * as resolutions from '../services/invoice-resolutions.service.js';
+export function purchaseInvoiceRoutes(){
+  const router=Router({mergeParams:true});router.use(authConfiguration,requireAuth,(req,_res,next)=>{req.invoice={identity:req.identity,entityId:entityId(req.params.entityId),requestId:req.requestId,idempotencyKey:req.get('Idempotency-Key')};next();});
+  const respond=fn=>async(req,res)=>res.json({...await fn(req),requestId:req.requestId});
+  router.get('/invoice-settings',respond(req=>invoices.getSettings(req.invoice)));
+  router.post('/invoice-settings',csrfProtection,respond(req=>invoices.saveSettings(req.invoice,req.body)));
+  router.get('/posting-settings',respond(req=>receipts.getSettings(req.invoice)));
+  router.post('/posting-settings',csrfProtection,respond(req=>receipts.saveSettings(req.invoice,req.body)));
+  router.get('/invoices/:id/resolution-preview',respond(req=>resolutions.preview(req.invoice,req.params.id)));
+  router.get('/invoices/:id/resolutions',respond(req=>resolutions.list(req.invoice,req.params.id,req.query)));
+  router.post('/invoices/:id/resolutions',csrfProtection,respond(req=>resolutions.request(req.invoice,req.params.id,req.body)));
+  for(const action of ['approve','reject'])router.post(`/resolutions/:id/${action}`,csrfProtection,respond(req=>resolutions.review(req.invoice,req.params.id,action,req.body)));
+  router.get('/invoices/:id/receipts',respond(req=>receipts.list(req.invoice,req.params.id,req.query)));
+  router.post('/invoices/:id/receipt-preview',csrfProtection,respond(req=>receipts.preview(req.invoice,req.params.id,req.body)));
+  router.post('/invoices/:id/receipts',csrfProtection,respond(req=>receipts.request(req.invoice,req.params.id,req.body)));
+  router.get('/receipts/:id',respond(req=>receipts.get(req.invoice,req.params.id)));
+  router.get('/receipts/:id/lines',respond(req=>receipts.lines(req.invoice,req.params.id,req.query)));
+  router.get('/receipts/:id/journal',respond(req=>receipts.journalPreview(req.invoice,req.params.id)));
+  for(const action of ['approve','reject','cancel','post'])router.post(`/receipts/:id/${action}`,csrfProtection,respond(req=>receipts.act(req.invoice,req.params.id,action,req.body)));
+  router.get('/invoices',respond(req=>invoices.list(req.invoice,req.query)));
+  router.post('/invoices',csrfProtection,respond(req=>invoices.importXml(req.invoice,req.body)));
+  router.get('/invoices/:id',respond(req=>invoices.get(req.invoice,req.params.id)));
+  router.get('/invoices/:id/lines',respond(req=>invoices.lines(req.invoice,req.params.id,req.query)));
+  router.get('/invoices/:id/lines/:lineId/source',respond(req=>invoices.lineSource(req.invoice,req.params.id,req.params.lineId)));
+  router.get('/invoices/:id/source',respond(req=>invoices.source(req.invoice,req.params.id)));
+  router.get('/invoices/:id/validation',respond(req=>invoices.validation(req.invoice,req.params.id,req.query)));
+  router.get('/invoices/:id/plans',respond(req=>invoices.plans(req.invoice,req.params.id,req.query)));
+  router.get('/invoices/:id/decisions',respond(req=>invoices.decisions(req.invoice,req.params.id,req.query)));
+  router.post('/invoices/:id/mappings',csrfProtection,respond(req=>invoices.savePlan(req.invoice,req.params.id,req.body)));
+  for(const action of ['submit','approve','reject','cancel','reopen'])router.post(`/invoices/:id/${action}`,csrfProtection,respond(req=>invoices.act(req.invoice,req.params.id,action,req.body)));
+  return router;
+}

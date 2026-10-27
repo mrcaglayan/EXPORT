@@ -1,4 +1,4 @@
-# PR-01 / PR-02 design baseline — version 9
+# PR-01 / PR-02 design baseline — version 12
 
 Created **21 October 2026 (Europe/Istanbul)** with the user's explicit instruction
 to write a new baseline and proceed with PR-01A. This is a new design derived
@@ -8,12 +8,12 @@ claim that future inventory features have been implemented.
 
 The tracked files in `docs/design/` are authoritative. Matching copies in
 `docs/project-root/` beside the roadmap allow its original filenames to resolve. Update both copies
-when revising this baseline. The companion SQL contains implemented PR-01A/PR-01B/PR-02A/PR-02B/PR-02C/PR-02D/PR-02E/PR-02F definitions
+when revising this baseline. The companion SQL contains implemented PR-01A/PR-01B/PR-02A/PR-02B/PR-02C/PR-02D/PR-02E/PR-02F/PR-03A/PR-03B/PR-03C definitions
 and clearly marked future contracts. Runtime schema changes use registered,
 forward-only JavaScript migrations; do not execute the reference SQL against
 an existing database.
 
-Revised **26 October 2026** for PR-02F corrections, reversals and the inventory release gate. PR-02 is complete; PR-03A is next. Real purchase sources remain PR-03.
+Revised **27 October 2026** for PR-03C atomic purchase receipt/accounting integration. PR-01/02 and PR-03A/03B/03C are complete; PR-04A export intake is next.
 
 ## Scope and shared contracts
 
@@ -368,9 +368,9 @@ availability inside the same transaction. Event lines, projections, audit,
 idempotency and any required accounting request commit together. Do not report
 GL-posted until its posting request links to a POSTED journal.
 
-PR-01/PR-02 DDL and release checks are implemented through m011. PR-03 onward
+PR-01/PR-02 DDL is implemented through m011, with purchasing in m012 and invoice staging/matching in m013 and purchase receipts in m014. PR-04A onward
 must extend these contracts through tested forward migrations while preserving
-old source and close history. Purchase/VAT integration remains future work.
+old source and close history. PR-03C now implements real receipt/GL/VAT integration; preserve applied m001–m014.
 
 ## Journals and later purchase invoices
 
@@ -395,3 +395,54 @@ duplicate races; hierarchy cycles including concurrent edits; deactivation and
 immutable identity rules; audit rollback; filter/pagination and browser workflows.
 Future PRs must extend this baseline and SQL reference alongside their migration,
 OpenAPI, tests and handoff. Applied migration sources remain immutable.
+
+## Implemented PR-03A purchasing extension
+
+Version 10 extends this originally PR-01/02-named baseline with m012. Four new
+scoped tables (63 total): trading_partners, purchasing_documents,
+purchase_request_lines and purchase_order_lines. See
+[the purchasing contract](../architecture/purchasing-foundation.md) for complete
+workflow, permissions, date/quantity/price rules and API. The final-state SQL below
+remains reference-only and includes the new tables/triggers.
+
+Partners link existing catalogue supplier identities or create a new one atomically.
+Contracts/requests/orders retain EBYS, partner/SKU snapshots, source-line keys and
+independent decisions. Pending/approved order quantities cannot exceed an approved
+request line. Reject/cancel releases commitments. Submitted lines, review evidence
+and snapshots are immutable; supplier communications and financial postings are
+not created by this stage. No fixed document line ceiling; 301-line integration
+coverage, 1 MiB guard, batched writes and paged UI/API.
+
+## Implemented PR-03B incoming supplier invoice extension
+
+Version 11 adds m013's six scoped tables (69 total): purchase_invoice_settings,
+purchase_invoices, purchase_invoice_lines, purchase_invoice_plans,
+purchase_invoice_mappings and purchase_invoice_decisions. See
+[invoice staging](../architecture/purchase-invoice-staging.md) for the limited
+UBLTR-STAGING-1 contract, supported precision, exceptions and decision workflow.
+
+Original XML, UUID, source hash and every line/tree are immutable. Price source
+strings allow 18 fractional places without truncation; matching blocks meaningful
+precision beyond six. Amounts and base-unit quantities retain DECIMAL(20,6).
+Mapping revisions and ordered review decisions remain append-only. Approved
+matching quantities are protected against concurrent over-ordering; authorized
+return-to-mapping retains prior decisions and releases matching commitments.
+No actual examples are imported and no inventory/GL/VAT event is posted here.
+
+## Implemented PR-03C receipt/accounting extension
+
+Version 12 extends the baseline with m014 and four scoped tables: purchase_posting_settings,
+purchase_invoice_resolutions, purchase_receipts and purchase_receipt_lines (73 total).
+Stock receipts gain the guarded PURCHASE_INVOICE source. Exact invoice stock value
+is authoritative independently of rounded informational unit cost; fixtures retain
+multiplication guards and layers must exactly match their source. Existing source
+rows, m001–m013 history and close snapshots remain unchanged.
+
+The [receipt contract](../architecture/purchase-receipts.md) defines explicit
+account mappings, line VAT choice/basis, foreign-currency conversion evidence,
+commercial discount/price review, complete physical receipts, independent approval,
+atomic stock/journal/audit posting, idempotency and source-line lineage. Public
+manual journals cannot use the reserved purchase source. Posted invoice approval
+and its one-time receipt lineage remain retained; stock-only purchase reversals
+are blocked until a coordinated financial reversal is implemented. No real data
+is seeded. PR-04A export cards/intake/shipments extend this frozen baseline next.

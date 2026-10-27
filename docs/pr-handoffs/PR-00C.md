@@ -1,7 +1,7 @@
 # PR-00C handoff — Accounting foundation
 
-**Current status — 26 October 2026:** PR-02F and the inventory release gate are
-implemented; see the [PR-02F handoff](PR-02F.md). PR-03A is next. The dated results
+**Current status — 27 October 2026:** PR-03C atomic purchase receipt/accounting is
+implemented; see the [PR-03C handoff](PR-03C.md). PR-04A is next. The dated results
 below describe the PR-00C delivery and its original next-step context.
 
 Implemented and verified on **20 October 2026 (Europe/Istanbul)**, extending the

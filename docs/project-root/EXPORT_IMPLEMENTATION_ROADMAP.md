@@ -1,15 +1,15 @@
 # Export Accounting Application — SaaP-Aligned Implementation Roadmap
 
-**Version:** 1.13 — 26 October 2026
+**Version:** 1.16 — 27 October 2026
 **Project:** new, standalone Turkish trading-exporter application  
 **Reference inspected:** uploaded `SaaP-main.zip` (read as reference, NOT executed)  
 **Scope:** multi-tenant / legal entity, product catalogue, same-warehouse virtual destination allocations, immutable inventory/accounting ledgers, purchasing/e-invoice, customs, VAT attribution and refund preparation.
 
-**Progress (26 October 2026):** PR-00AA through PR-00C, PR-01A through PR-01C and PR-02A through PR-02F implemented.
-Next: PR-03A — trading partners, contracts, purchase requests/orders and approvals.
+**Progress (27 October 2026):** PR-00AA through PR-00C, PR-01A through PR-01C, PR-02A through PR-02F and PR-03A/PR-03B/PR-03C implemented.
+Next: PR-04A — packing-list intake, export cards, country allocation and shipments.
 The user authorized a new PR-01/02 design baseline; it is clearly labeled as new.
 Journals have no fixed line-count ceiling, use a paged editor and batched writes.
-See `docs/pr-handoffs/PR-02F.md` from the repository root for actual
+See `docs/pr-handoffs/PR-03C.md` from the repository root for actual
 commands/results and the current implementation limits.
 
 ## 0. Ground rules and confirmed decisions
@@ -17,7 +17,7 @@ commands/results and the current implementation limits.
 1. The new application uses **the same technology family and code conventions as SaaP**, but is a **separate repository and database**. It is not a copy or extension of the whole SaaP ERP. A future integration adapter can be added when required.
 2. Country-specific goods share the **same physical warehouse** and are earmarked with **virtual country pools**. `GENERAL` + country pools must sum to physical on-hand stock for each warehouse/SKU/source layer.
 3. The Excel workbook `Ortak Malzeme.xlsx` is **background reference only**. Do not load it, reconstruct old purchases/stock balances, seed historical inventory, consolidate its real codes, or allocate historical input VAT. Build **capabilities** for later import and approval, but do not execute any migration until actual data and a cut-off date are supplied.
-4. On 21 October 2026 the user authorized a **new baseline**: `PR01_PR02_database_specification.md` and `PR01_PR02_schema.sql`. Tracked authoritative copies are in `export-accounting/docs/design/`; matching copies sit beside this roadmap. They were written from this roadmap and the existing app, not recovered original inputs. Baseline v9 includes PR-01/PR-02 DDL implemented in m004–m011; later purchasing contracts must extend it through their own forward-only migrations. Preserve applied migrations.
+4. On 21 October 2026 the user authorized a **new baseline**: `PR01_PR02_database_specification.md` and `PR01_PR02_schema.sql`. Tracked authoritative copies are in `export-accounting/docs/design/`; matching copies sit beside this roadmap. They were written from this roadmap and the existing app, not recovered original inputs. Baseline v12 includes PR-01/PR-02 DDL in m004–m011, purchasing in m012 and invoice staging/matching in m013 and atomic purchase receipts in m014; later contracts extend it through forward-only migrations. Preserve applied migrations.
 5. No negative stock; no silent country borrowing; no artificial `0.0001` amount for genuinely free-of-charge lines; no VAT refund based only on dispatch or invoice issuance.
 6. Source purchase VAT, inventory cost, VAT attributable to customs-cleared exports, VAT deduction, and the ultimately claimable refund are **separate amounts and ledgers**.
 7. Each merge/PR must leave the app bootable, migrations runnable, and tests passing. No large untested omnibus PR.
@@ -356,15 +356,15 @@ docs/architecture/inventory-receipts.md and docs/pr-handoffs/PR-02B.md.
 
 **Acceptance**: end-to-end warehouse receipt → AF allocation → reserve → dispatch → reverse → close; balances and accounting effects reconcile, even under retry or contention.
 
-**Implemented (26 October 2026):** m011 adds independently approved counts/revaluation and exact receipt/transfer/dispatch/correction reversals, with immutable source/evidence, before-balances and movement hashes. It preserves reservations, both calendars, original entries and old closes. Zero-quantity value deltas and no-orphan projection checks are enforced. Cursor movement history, grouped reconciliation, database-paged closed reports and a 1,001-layer/10,002-entry synthetic budget gate are included in test:pr02. Automatic stock-related GL/VAT policy remains explicit future purchasing work; mismatches still block close. See docs/architecture/inventory-corrections.md and docs/pr-handoffs/PR-02F.md.
+**Implemented (27 October 2026):** m011 adds independently approved counts/revaluation and exact receipt/transfer/dispatch/correction reversals, with immutable source/evidence, before-balances and movement hashes. It preserves reservations, both calendars, original entries and old closes. Zero-quantity value deltas and no-orphan projection checks are enforced. Cursor movement history, grouped reconciliation, database-paged closed reports and a 1,001-layer/10,002-entry synthetic budget gate are included in test:pr02. Automatic stock-related GL/VAT policy remains explicit future purchasing work; mismatches still block close. See docs/architecture/inventory-corrections.md and docs/pr-handoffs/PR-02F.md.
 
-## 4. Later PR families (planned now; implement after PR-01/02)
+## 4. Purchasing and later PR families
 
 | PR | Core scope | Dependency |
 |---|---|---|
-| PR-03A | Trading partners, contracts, purchase requests, purchase orders, EBYS references and approvals | PR-00/01 |
-| PR-03B | İZİBİZİ e-Fatura XML import and UUID deduplication; source-line preservation; bulk SKU mapping; document matching; VAT/zero-price validation | PR-03A/01 |
-| PR-03C | Invoice → approved purchase → goods receipt → inventory and 191/320 journal integration, including mismatch exceptions | PR-02/03B |
+| PR-03A — implemented | Trading partners, contracts, purchase requests, purchase orders, EBYS references and approvals | PR-00/01 |
+| PR-03B — implemented | İZİBİZİ e-Fatura XML import and UUID deduplication; source-line preservation; bulk SKU mapping; document matching; VAT/zero-price validation | PR-03A/01 |
+| PR-03C — implemented | Invoice → approved purchase → goods receipt → inventory and 191/320 journal integration, including mismatch exceptions | PR-02/03B |
 | PR-04A | Packing-list intake, export card sequence, country allocation and export shipments | PR-02D/03 |
 | PR-04B | Export invoice/e-document, customs broker GTİP review, GÇB declaration/closing, partial clearance and transaction-type differentiation | PR-04A |
 | PR-05A | Input VAT source register by purchase invoice line; real source-layer attribution; candidate exported VAT | PR-03/04 |
@@ -373,6 +373,40 @@ docs/architecture/inventory-receipts.md and docs/pr-handoffs/PR-02B.md.
 | PR-06B | Yüklenilen KDV / İndirilecek KDV / export sales / GÇB lists, claim package, refund payment/offset tracking | PR-06A |
 | PR-07 | Performance, security hardening, document retention, GİB interface verification, pilot and deployment readiness | all |
 | MIGRATION-LATER | **Only after system completion**: receive the real migration files, approve mapping, define cut-off, verify physical counts/valuation/source VAT, stage + reconcile + post opening balances | explicit future decision |
+
+**PR-03A implemented (27 October 2026):** m012 links trading partners to existing
+catalogue supplier identities and adds immutable contracts/requests/orders with
+EBYS references, partner/SKU snapshots and independent approval. Orders retain
+multiple request source lines, exact base-unit quantities, net prices and explicit
+free-goods reasons. Pending/approved orders commit requested quantities; scoped
+locking prevents over-ordering and reject/cancel releases commitments. No fixed
+line ceiling, paged editors/reads and batched atomic writes. Sidebar Purchasing
+screens and OpenAPI 0.13.0 are included. No external order sending, invoice XML,
+real stock receipt, GL or VAT posting occurs in this step. See
+docs/architecture/purchasing-foundation.md and docs/pr-handoffs/PR-03A.md.
+
+**PR-03B implemented (27 October 2026):** m013 adds immutable incoming purchase
+Invoice XML/source lines, exact UUID/source hash deduplication, recipient identity,
+bulk/manual/verified-alias mapping revisions, approved-order matching, paged
+exceptions and independent decisions. Review can return for mapping correction
+while retaining all prior decisions/source; matching quantities cannot exceed
+ordered quantities. Supports multiple SKUs and source VAT treatments without a
+fixed business line ceiling. Incoming supplier examples were inspected read-only;
+the DEK document discount remains an explicit exception. Earlier supplied outgoing
+XML remains a later export reference. No real source import, stock, GL or VAT was
+posted. OpenAPI 0.14.0 documents 147 paths. See
+docs/architecture/purchase-invoice-staging.md and docs/pr-handoffs/PR-03B.md.
+
+**PR-03C implemented (27 October 2026):** m014 adds independently reviewed
+commercial price/document-discount resolutions, complete physical goods receipts,
+exact stock/pool costs, explicit deductible/capitalized/zero source VAT, dated
+currency conversion and atomic 153/191/320 journals. Source invoice/order/stock
+layer/journal links remain retained; independent review, current context, both
+open periods, retry and rollback guards apply. No fixed line ceiling; 301-line
+posting is tested. No real invoice approval or stock/GL posting is seeded.
+Partial physical receipts/accruals, credit notes and coordinated purchase financial
+reversals remain later work. OpenAPI 0.15.0 has 161 paths. See
+docs/architecture/purchase-receipts.md and docs/pr-handoffs/PR-03C.md.
 
 ## 5. API conventions
 
@@ -445,4 +479,4 @@ cd frontend && npm run lint && npm run build
 - Accounting-account policy, stock valuation and export VAT rules to receive Turkish SMMM/YMM sign-off before live use.
 - Integration with SaaP's full GL or HR/Payroll is not assumed; write domain adapters so that it remains possible.
 
-**Current sequence:** PR-00AA through PR-00C, PR-01A through PR-01C and PR-02A through PR-02F are complete. The newly authorized design baseline replaces the absent input prerequisite. Next implement PR-03A, preserving applied m001–m011, exact corrections/reversals and retained close versions. Continue extending the existing project and refine future baseline contracts as their PRs are implemented.
+**Current sequence:** PR-00AA through PR-00C, PR-01A through PR-01C, PR-02A through PR-02F and PR-03A/PR-03B/PR-03C are complete. The newly authorized design baseline replaces the absent input prerequisite. Next implement PR-04A, preserving applied m001–m014, original invoice XML/lines, mapping/decision revisions, purchasing source lines and approvals/commitments, exact corrections/reversals and retained close versions. Continue extending the existing project and refine future baseline contracts as their PRs are implemented.

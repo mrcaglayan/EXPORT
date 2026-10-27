@@ -13,6 +13,6 @@ export default function RequireAuth() {
       <Button onClick={refresh}>Try again</Button>
     </div>
   )
-  if (status !== 'ready') return <Navigate to="/login" state={{ from: location.pathname }} replace />
+  if (status !== 'ready') return <Navigate to="/login" state={{ from: location.pathname + location.search + location.hash }} replace />
   return <Outlet />
 }

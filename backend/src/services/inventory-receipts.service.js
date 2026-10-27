@@ -102,11 +102,18 @@ async function insertRows(tx, table, columns, rows) {
   }
 }
 export async function postFixture(context, body) {
-  if (!fixturePostingEnabled()) throw fail('SOURCE_NOT_AVAILABLE', 'Purchase receipt sources are not connected yet.', 403);
+  if (!fixturePostingEnabled()) throw fail('SOURCE_NOT_AVAILABLE', 'Fixture receipt posting is available only in an isolated test database.', 403);
   const input = receipt(body);
-  return entityWrite(context, 'inventory.receipt.post', 'inventory.receipt.post', input, async tx => {
+  return entityWrite(context, 'inventory.receipt.post', 'inventory.receipt.post', input, tx => postSourceInTransaction(tx,context,input,'TEST_FIXTURE'));
+}
+// Internal adapter only. The caller owns authorization, entity lock and atomic
+// transaction; database guards require its independently approved purchase plan.
+export function postPurchaseInTransaction(tx,context,input) {
+  return postSourceInTransaction(tx,context,input,'PURCHASE_INVOICE');
+}
+async function postSourceInTransaction(tx,context,input,sourceKind) {
     const hash = fingerprint(input);
-    const { rows: prior } = await tx.query("SELECT id, payload_hash AS payloadHash, status FROM stock_receipts WHERE tenant_id = ? AND legal_entity_id = ? AND source_kind = 'TEST_FIXTURE' AND source_id = ? FOR UPDATE", [...scopeArgs(context), input.sourceId]);
+    const { rows: prior } = await tx.query('SELECT id, payload_hash AS payloadHash, status FROM stock_receipts WHERE tenant_id = ? AND legal_entity_id = ? AND source_kind = ? AND source_id = ? FOR UPDATE', [...scopeArgs(context), sourceKind,input.sourceId]);
     if (prior.length) {
       if (prior[0].payloadHash !== hash || prior[0].status !== 'POSTED') throw fail('SOURCE_CONFLICT', 'This receipt source already has different content.');
       return header(tx, context, prior[0].id);
@@ -130,7 +137,7 @@ export async function postFixture(context, body) {
     }
     const id = randomUUID(), eventId = randomUUID(), scope = scopeArgs(context);
     await insertRows(tx, 'stock_receipts', ['id', 'tenant_id', 'legal_entity_id', 'source_kind', 'source_id', 'payload_hash', 'document_date', 'posting_date', 'period_id', 'warehouse_id', 'movement_type_id', 'currency', 'description', 'total_value', 'created_by'],
-      [[id, ...scope, 'TEST_FIXTURE', input.sourceId, hash, input.documentDate, input.postingDate, periods[0].id, input.warehouseId, input.movementTypeId, input.currency, input.description, input.totalValue, context.identity.userId]]);
+      [[id, ...scope, sourceKind, input.sourceId, hash, input.documentDate, input.postingDate, periods[0].id, input.warehouseId, input.movementTypeId, input.currency, input.description, input.totalValue, context.identity.userId]]);
     const lines = input.lines.map((line, index) => ({ ...line, id: randomUUID(), layerId: randomUUID(), number: index + 1 }));
     await insertRows(tx, 'stock_receipt_lines', ['id', 'tenant_id', 'legal_entity_id', 'receipt_id', 'line_number', 'source_line_key', 'sku_id', 'description', 'quantity', 'unit_cost', 'value'],
       lines.map(line => [line.id, ...scope, id, line.number, line.sourceLineKey, line.skuId, line.description, line.quantity, line.unitCost, line.value]));
@@ -152,7 +159,6 @@ export async function postFixture(context, body) {
     // Existing warehouse history is neither scanned nor locked for a new receipt.
     // DB guard independently verifies source layers, ledgers and projections.
     await tx.query("UPDATE stock_receipts SET status = 'POSTED' WHERE tenant_id = ? AND legal_entity_id = ? AND id = ?", [...scope, id]);
-    await audit(tx, context, 'inventory.receipt.posted', id, { sourceKind: 'TEST_FIXTURE', sourceId: input.sourceId, eventId, lineCount: lines.length, totalValue: input.totalValue, currency: input.currency });
+    await audit(tx, context, 'inventory.receipt.posted', id, { sourceKind, sourceId: input.sourceId, eventId, lineCount: lines.length, totalValue: input.totalValue, currency: input.currency });
     return header(tx, context, id);
-  });
 }

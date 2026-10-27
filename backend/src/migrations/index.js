@@ -1,3 +1,6 @@
+import purchaseReceipts from './m014_purchase_receipts.js';
+import invoiceStaging from './m013_purchase_invoice_staging.js';
+import purchasing from './m012_purchasing_foundation.js';
 import m011 from './m011_inventory_corrections.js';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -15,7 +18,7 @@ import reservations from './m009_inventory_reservations_issues.js';
 import periodClose from './m010_inventory_period_close.js';
 
 // Freeze applied migration sources. Add a new registered file for later changes.
-export default [foundation, identity, accounting, products, classification, inventory, receipts, reallocations, reservations, periodClose, m011].map(migration => ({
+export default [foundation, identity, accounting, products, classification, inventory, receipts, reallocations, reservations, periodClose, m011, purchasing, invoiceStaging, purchaseReceipts].map(migration => ({
   ...migration,
   checksum: createHash('sha256')
     .update(readFileSync(new URL(`./${migration.key}.js`, import.meta.url))).digest('hex'),

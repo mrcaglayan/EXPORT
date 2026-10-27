@@ -247,5 +247,23 @@ applied m001–m010 files/history are retained. m011 verifies the complete evolv
 m007–m009 contract through the explicit handoff; m010 still verifies closes.
 
 Back up before db:migrate:local; reruns verify without reapplying. Preserve
-applied m001–m011. PR-03A must use a new migration and retain correction and
+applied m001–m012. The PR-03A extension below retains correction and
 snapshot history. See [corrections](inventory-corrections.md) and the test:pr02 gate.
+
+## PR-03A purchasing extension
+
+m012_purchasing_foundation adds four new tables (63 total), eleven purchasing
+guards and four explicit ADMIN permissions. It links existing supplier identities
+without rewriting product tables or seeding partners/documents. It verifies its
+own column/index/FK/check/trigger contract; existing migration verifiers continue
+to own their unchanged tables. Keep applied m001–m012 frozen after deployment.
+See [purchasing](purchasing-foundation.md) for source-line commitments and decisions.
+
+## PR-03B invoice staging
+
+m013_purchase_invoice_staging adds six tables (69 total), source/mapping/decision
+immutability and workflow guards, an additional purchasing-order dependency guard
+and four explicit ADMIN invoice permissions. m012's old tables/trigger definitions
+remain unchanged. Verifiers coexist; no prior migration source is edited. Preserve
+m001–m013 after application. Back up before migration and verify rerun/row hashes.
+See [incoming invoice staging](purchase-invoice-staging.md).

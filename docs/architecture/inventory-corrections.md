@@ -1,6 +1,6 @@
 # Stock corrections and PR-02 release gate
 
-Implemented in PR-02F, 26 October 2026. m011 adds two tables (59 total), exact
+Implemented in PR-02F, 27 October 2026. m011 adds two tables (59 total), exact
 reversal links and derived posting dates on immutable stock events. It preserves
 applied m001–m010 sources and original event/ledger fields. The event date backfill
 copies each retained source's posting date; it does not change that date.
@@ -130,8 +130,8 @@ remain slower bulk operations. The entity write lock still serializes mutations;
 benchmark the intended deployment hardware and larger/multi-company workloads
 before promising interactive latency or sustained throughput.
 
-PR-02 completes here. Next is PR-03A: trading partners, contracts, purchase
-requests/orders, EBYS references and approvals. Preserve m001–m011, exact source
+PR-02 completes here. PR-03A purchasing is now implemented in m012; see
+[purchasing](purchasing-foundation.md). Invoice staging is now implemented in m013; PR-03C is now implemented in m014; PR-04A is next. See [purchase receipt/accounting](purchase-receipts.md). Preserve m001–m013, exact source
 lineage, correction/reversal history and old snapshots. Real purchase receipt
 posting remains fixture-only until the authorized PR-03 purchasing adapter;
 multi-item invoice accounting and VAT integration remain PR-03B/PR-03C.
