@@ -7,9 +7,9 @@ export async function checkPurchaseReceipts(page,base,artifacts,browser){
   const post=async(path,body)=>(await apiClient.post(path,body,{headers:{'Idempotency-Key':crypto.randomUUID()}})).data
   const years=(await apiClient.get(accounting+'/fiscal-years')).data.items,period=(await post(accounting+'/periods',{code:'OCT-PURCHASE',fiscalYearId:years[0].id,startDate:'2026-10-01',endDate:'2026-10-31'})).period
   await post(inventory+'/periods',{accountingPeriodId:period.id})
-  const accounts=(await apiClient.get(accounting+'/accounts',{params:{limit:100}})).data.items,warehouses=(await apiClient.get(inventory+'/warehouses')).data.items,movements=(await apiClient.get(inventory+'/movement-types')).data.items,pools=(await apiClient.get(inventory+'/pools')).data.items
+  const accounts=(await apiClient.get(accounting+'/accounts',{params:{limit:100}})).data.items,warehouse=(await post(inventory+'/warehouses',{code:'PURCHASE-TRACE',name:'Synthetic purchase provenance'})).item,movements=(await apiClient.get(inventory+'/movement-types')).data.items,pools=(await apiClient.get(inventory+'/pools')).data.items
   const invoice=(await apiClient.get(purchasing+'/invoices',{params:{q:'BROWSER-INVOICE'}})).data.items[0],order=(await apiClient.get(purchasing+'/orders',{params:{q:'BROWSER-ORDER'}})).data.items[0],orderLines=(await apiClient.get(purchasing+`/orders/${order.id}/lines`)).data.items
-  return {accounts:Object.fromEntries(accounts.map(a=>[a.code,a.id])),warehouse:warehouses.find(w=>w.active).id,movement:movements.find(m=>m.effect==='RECEIPT').id,pool:pools.find(p=>p.kind==='GENERAL').id,invoiceId:invoice.id,order,orderLines,purchasing}
+  return {accounts:Object.fromEntries(accounts.map(a=>[a.code,a.id])),warehouse:warehouse.id,movement:movements.find(m=>m.effect==='RECEIPT').id,pool:pools.find(p=>p.kind==='GENERAL').id,invoiceId:invoice.id,order,orderLines,purchasing}
  })
  await page.goto(`${base}/purchasing?view=invoices`)
  await page.getByRole('button',{name:'Configure purchase posting',exact:true}).click()

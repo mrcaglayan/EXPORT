@@ -24,11 +24,12 @@ test('PR-03B immutable invoice staging, exact mapping and independent source mat
   const partner=(await partners.save(ctx(),{code:'SUP',name:'Synthetic supplier',kind:'SUPPLIER',countryCode:'TR',taxIdentifier:'1111111111'})).item;
   const history=(await query('SELECT * FROM schema_migrations ORDER BY migration_key')).rows,oldPartners=(await query('SELECT * FROM trading_partners')).rows;
   await t.test('m013 preserves suppliers/history, reruns and detects missing guards/recovery',async()=>{
-    await runMigrations();await runMigrations();assert.equal((await query('SHOW TABLES')).rows.length,73);
+    const upgradeInvoice=options=>runMigrations({...options,migrations:migrations.slice(0,13)});
+    await upgradeInvoice();await upgradeInvoice();assert.equal((await query('SHOW TABLES')).rows.length,69);
     assert.deepEqual((await query("SELECT * FROM schema_migrations WHERE migration_key<'m013_purchase_invoice_staging' ORDER BY migration_key")).rows,history);assert.deepEqual((await query('SELECT * FROM trading_partners')).rows,oldPartners);
     for(const table of ['purchase_invoice_settings','purchase_invoices','purchase_invoice_lines','purchase_invoice_plans','purchase_invoice_mappings','purchase_invoice_decisions'])assert.equal((await query(`SELECT COUNT(*) AS n FROM ${table}`)).rows[0].n,0);
-    const tr=triggers.find(t=>t[0]==='purchase_invoice_mapping_insert');await getMigrationPool().query(`DROP TRIGGER ${tr[0]}`);try{await assert.rejects(runMigrations(),/trigger differs/);}finally{await getMigrationPool().query(`CREATE TRIGGER ${tr[0]} BEFORE ${tr[1]} ON ${tr[2]} FOR EACH ROW ${tr[3]}`);}
-    await query("UPDATE schema_migrations SET status='running' WHERE migration_key='m013_purchase_invoice_staging'");await assert.rejects(runMigrations(),{code:'MIGRATION_RECOVERY_REQUIRED'});await runMigrations({retryKey:'m013_purchase_invoice_staging'});
+    const tr=triggers.find(t=>t[0]==='purchase_invoice_mapping_insert');await getMigrationPool().query(`DROP TRIGGER ${tr[0]}`);try{await assert.rejects(upgradeInvoice(),/trigger differs/);}finally{await getMigrationPool().query(`CREATE TRIGGER ${tr[0]} BEFORE ${tr[1]} ON ${tr[2]} FOR EACH ROW ${tr[3]}`);}
+    await query("UPDATE schema_migrations SET status='running' WHERE migration_key='m013_purchase_invoice_staging'");await assert.rejects(upgradeInvoice(),{code:'MIGRATION_RECOVERY_REQUIRED'});await upgradeInvoice({retryKey:'m013_purchase_invoice_staging'});await runMigrations();
   });
   const reviewRole=randomUUID();await query("INSERT INTO roles (id,tenant_id,code,name) VALUES (?,?,'INVOICE_REVIEWER','Invoice reviewer')",[reviewRole,f.alpha.tenantId]);
   for(const p of ['workspace.read','purchasing.read','purchasing.invoice.review'])await query('INSERT INTO role_permissions (tenant_id,role_id,permission_code) VALUES (?,?,?)',[f.alpha.tenantId,reviewRole,p]);

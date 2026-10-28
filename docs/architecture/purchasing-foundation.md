@@ -2,7 +2,7 @@
 
 **Current extension:** PR-03C is now implemented in m014; read the
 [purchase receipt/accounting contract](purchase-receipts.md). The original
-staging/foundation delivery below retains its dated boundaries. Next is PR-04A.
+staging/foundation delivery below retains its dated boundaries. PR-04B outgoing/customs evidence is implemented in m016; next is PR-05A.
 
 Implemented 27 October 2026. This stage records trading partners, supplier
 contracts, multi-item purchase requests and purchase orders with independent

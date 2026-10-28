@@ -1,8 +1,8 @@
 # PR-01A handoff — Product foundation and journal scaling
 
-**Current status — 27 October 2026:** PR-03C atomic purchase receipt/accounting is
-implemented; see the [PR-03C handoff](PR-03C.md). PR-04A is next. The dated results
-below describe the PR-01A delivery and its original next-step context.
+**Current status — 28 October 2026:** PR-05B is implemented; see the
+[PR-05B handoff](PR-05B.md). PR-06A is next. Dated results below retain their
+original delivery scope and historical next-step context.
 
 Implemented **21 October 2026 (Europe/Istanbul)** in the existing local app.
 Open **http://localhost:5173/products**. Next is **PR-01B — specifications,

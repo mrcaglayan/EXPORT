@@ -1,4 +1,4 @@
-# PR-01 / PR-02 design baseline — version 12
+# PR-01 / PR-02 design baseline — version 17
 
 Created **21 October 2026 (Europe/Istanbul)** with the user's explicit instruction
 to write a new baseline and proceed with PR-01A. This is a new design derived
@@ -8,12 +8,12 @@ claim that future inventory features have been implemented.
 
 The tracked files in `docs/design/` are authoritative. Matching copies in
 `docs/project-root/` beside the roadmap allow its original filenames to resolve. Update both copies
-when revising this baseline. The companion SQL contains implemented PR-01A/PR-01B/PR-02A/PR-02B/PR-02C/PR-02D/PR-02E/PR-02F/PR-03A/PR-03B/PR-03C definitions
+when revising this baseline. The companion SQL contains implemented PR-01A/PR-01B/PR-02A/PR-02B/PR-02C/PR-02D/PR-02E/PR-02F/PR-03A/PR-03B/PR-03C/PR-04A/PR-04B/PR-05A/PR-05B/PR-06A definitions
 and clearly marked future contracts. Runtime schema changes use registered,
 forward-only JavaScript migrations; do not execute the reference SQL against
 an existing database.
 
-Revised **27 October 2026** for PR-03C atomic purchase receipt/accounting integration. PR-01/02 and PR-03A/03B/03C are complete; PR-04A export intake is next.
+Revised **28 October 2026** for PR-06A deduction/KDV1/refund review. PR-01/02, PR-03A/03B/03C, PR-04A/04B, PR-05A/05B and PR-06A are complete; PR-06B claim packages and settlement tracking are next.
 
 ## Scope and shared contracts
 
@@ -368,7 +368,7 @@ availability inside the same transaction. Event lines, projections, audit,
 idempotency and any required accounting request commit together. Do not report
 GL-posted until its posting request links to a POSTED journal.
 
-PR-01/PR-02 DDL is implemented through m011, with purchasing in m012 and invoice staging/matching in m013 and purchase receipts in m014. PR-04A onward
+PR-01/PR-02 DDL is implemented through m011, with purchasing in m012 and invoice staging/matching in m013 and purchase receipts in m014 and export operations in m015 and outgoing/customs evidence in m016. PR-05A onward
 must extend these contracts through tested forward migrations while preserving
 old source and close history. PR-03C now implements real receipt/GL/VAT integration; preserve applied m001–m014.
 
@@ -445,4 +445,107 @@ atomic stock/journal/audit posting, idempotency and source-line lineage. Public
 manual journals cannot use the reserved purchase source. Posted invoice approval
 and its one-time receipt lineage remain retained; stock-only purchase reversals
 are blocked until a coordinated financial reversal is implemented. No real data
-is seeded. PR-04A export cards/intake/shipments extend this frozen baseline next.
+is seeded. PR-04A now extends this baseline with export cards/intake/shipments in m015.
+
+## Implemented PR-04A export operations
+
+Version 13 adds m015 and nine new scoped tables: export_packing_lists,
+export_packing_lines, export_packing_plans, export_packing_mappings,
+export_packing_decisions, export_card_sequences, export_cards, export_shipments
+and export_shipment_lines (82 total). Existing m001–m014 sources stay frozen.
+Original source/hash, mapping and ordered independent decisions remain immutable.
+Annual company export-card numbering is assigned only at independent approval;
+voided numbers remain retained. Partial shipments guard remaining packing
+quantities, then reserve existing destination/GENERAL FIFO source stock and
+atomically dispatch its exact quantities/cost. Linked inventory reservations
+and issues cannot bypass the export workflow. Per-line provenance reaches the
+original purchase receipt/invoice/order sources where available. No customs,
+sales/COGS journal, VAT/refund eligibility or historical source is inferred.
+
+See [the export contract](../architecture/export-operations.md) for intake fields,
+permissions, review renewal, stock source boundaries and tests. Current intake
+supports manual lines and UTF-8 CSV; the supplied multi-sheet XLSX remains a
+read-only format reference pending an explicit sheet/summary reconciliation adapter.
+PR-04B now extends export invoice/e-documents, broker review and GÇB lifecycle in m016. See the implemented extension below.
+
+## Implemented PR-04B outgoing/customs extension
+
+m016 adds eight scoped tables (90 total):
+
+| Table | Purpose |
+|---|---|
+| `export_document_settings` | Explicit exporter identity |
+| `export_sales_invoices` | Immutable externally issued XML and matching workflow |
+| `export_sales_invoice_lines` | Original invoice quantities/net/actual VAT |
+| `export_sales_plans` | Retained complete mapping revisions and transaction type |
+| `export_sales_allocations` | Exact original invoice to shipment quantities |
+| `export_customs_documents` | Declaration/partial exit/final evidence workflow |
+| `export_customs_lines` | Exact invoice allocation, dispatched issue and broker source snapshots |
+| `export_compliance_decisions` | Append-only independent review and renewal evidence |
+
+All actor/source relationships use scoped FKs. Immutable-source/history, independent-review, exact coverage and cross-document quantity guards supplement entity-locked transactional services. Existing card/shipment cancellation gains outgoing dependency guards. Applied m001–m015 stay unchanged. The SQL reference mirrors exported m016 table/trigger definitions without permission inserts.
+
+Original profile/VAT and foreign buyer identity are preserved. Local matching approval does not certify statutory validity. Declarations use actual DISPATCHED sources and date-effective broker VERIFIED GTİP. Registration may precede dispatch; accepted exit cannot. Independently approved partial quantities and exact final totals determine closure; accepted exit facts cannot be edited or cancelled. STANDARD_EXPORT, FREE_OF_CHARGE, TEMPORARY_EXPORT and RETURN_EXPORT remain explicitly evidenced. No live e-document/customs transmission, export journal, VAT source register or refund is implemented here.
+
+See [the complete contract](../architecture/export-documents-customs.md) and [handoff](../pr-handoffs/PR-04B.md). PR-05A extends original purchase VAT sources through accepted customs quantities without rewriting these facts.
+
+
+## PR-05A extension — original VAT and accepted-export attribution
+
+m017 adds vat_input_sources, vat_attributions, vat_attribution_lines and
+vat_attribution_decisions (94 tables / 17 migrations). A scoped unique index on
+journal_lines supports its original VAT source FK without changing journal rows.
+Sources retain original posted purchase-line VAT, conversion, deductible/capitalized
+treatment, stock layer and journal evidence. Accepted customs exit quantities trace
+the exact issue/layer/purchase chain. Pending and approved attributions reserve
+original quantity and exact tax; last depletion takes the residual. Independent
+review and evidenced void preserve original decisions. VOID_REQUESTED retains
+commitments and accepted totals until an independent acceptance releases them.
+Candidate VAT is analytical, separate from tax-period deduction and claimability.
+See [the complete contract](../architecture/vat-source-attribution.md). Preserve
+applied m001–m017; later claims/returns require coordinated dependency guards.
+
+## PR-05B physical schema and reviewed allocation contract
+
+| Table | Retained contract |
+|---|---|
+| vat_cost_sources | Original supplier line, posted VAT debit, category, conversion/deduction facts and per-asset first-use/unrecovered basis |
+| vat_allocation_bases | Reviewed month, complete turnover and applicable rate, ordinary ceiling and frozen approved candidate-goods VAT |
+| vat_allocation_basis_lines | Immutable original goods-attribution membership, candidate VAT and customs/source snapshots |
+| vat_cost_allocations | Source/month/category/treatment, consumed basis, ratio result, allocated/candidate/non-export/limited amounts and cumulative asset history |
+| vat_cost_allocation_lines | Positive weights and exact six-decimal allocation to original monthly goods lines |
+| vat_cost_decisions | One scoped parent, immutable actor/reason/context and deterministic decision sequence |
+
+The three headers use ASSEMBLING → REQUESTED → APPROVED/REJECTED/CANCELLED;
+APPROVED → VOID_REQUESTED → VOIDED or back to APPROVED. Original reviews and
+plans stay immutable. Independent reviewers accept/reject requests and voids.
+Pending and void-pending amounts reserve source basis. Original debit sums and
+invoice-line uniqueness prevent reuse; posted non-stock invoices cannot also enter
+complete-goods receipts. Monthly candidate goods are frozen while their basis is
+active. Corrections release later priority and later asset-period dependencies first.
+
+Direct charges use explicit relationships; overhead uses period eligible/total
+turnover and remaining ordinary ceiling; ATİK uses reviewed unrecovered VAT times
+cumulative eligible/all-use turnover from first use, less previous committed
+allocations, floored at zero and limited to remaining ceiling. Cumulative values
+include domestic-only months. Largest-remainder integer micro-units conserve the
+amount over positive weights, including 301-line inputs. No fixed business ceiling.
+
+API 0.19.0 / 280 paths, session/CSRF, scoped permissions, entity locking, idempotency
+and atomic audit are retained. Six request/review permissions are assigned only to
+ADMIN roles. Full original inputs and legal/rate/turnover/use evidence are reviewed;
+these analytical candidates do not certify final refund eligibility. PR-06A now adds deduction-period reconciliation, claims and claimed-source correction guards through m019.
+See [the detailed allocation contract](../architecture/vat-cost-allocation.md).
+
+## Implemented PR-06A contract
+
+PR-06A adds reviewed original-source deductions, closed monthly KDV1 reconciliation, carry-chain checks, exact duplicate-safe refund requests, dated eligibility/limit checks and independent correction history. m019 adds six tables (106 total) and six request/review permissions. Original candidates and recognized deductions are both reserved; prior external claims reduce capacity. No tax return, claim, stock or journal is seeded or submitted. OpenAPI 0.20.0 has 314 paths.
+
+- `vat_deductions`
+- `vat_reconciliations`
+- `vat_reconciliation_deductions`
+- `vat_refund_requests`
+- `vat_refund_lines`
+- `vat_refund_decisions`
+
+The complete contract and official policy references are in [VAT refund reconciliation](../architecture/vat-refund-reconciliation.md). Closed full calendar months retain all recognized source deductions and the declared carry/refund arithmetic. Every original claim line is capped by both its candidate and recognized deduction, including previous external refunds. Active reconciliation freezes deduction changes, the monthly export basis/candidate costs and accounting reopening; claims block dependent correction. Six-decimal sources use one explicit cents rounding for the return. Standard 301 policy version TR-301-2026-10-28 supports April 2025–December 2029, with explicit eligibility/procedure evidence; no external submission is implied. PR-06B must add immutable filing/package/settlement records and external withdrawal guards.

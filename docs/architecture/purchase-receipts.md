@@ -10,8 +10,8 @@ receipts, additional users or real stock/GL transactions are seeded.
 
 The retained source XML, original parser findings, invoice lines, mapping revisions
 and matching decisions remain unchanged. A receipt requires a READY invoice whose
-current matching and commercial approval still pass all checks. Invoice UUID,
-source-line UUID and approved order-line UUID remain distinct identifiers.
+current matching and commercial approval still pass all checks. Source XML UUID, internal invoice ID,
+source-line ID and approved order-line ID remain distinct identifiers.
 
 All services check the assigned tenant/entity and permission. Writes use the
 common entity lock, scoped transaction, CSRF/Origin, idempotency and audit path.
@@ -98,8 +98,8 @@ Several SKU/VAT lines produce separate goods/VAT journal lines and one payable
 line. Retained receipt-line details identify invoice and approved order sources,
 VAT choice/basis, exact native/base amounts and goods/VAT journal line numbers.
 Posted reads join the stock source line and inventory layer. The receipt header
-links the exact stock receipt and posted journal; journal source is the invoice
-UUID record ID under reserved `PURCHASE_INVOICE`.
+links the exact stock receipt and posted journal; journal source is the internal invoice
+record ID under reserved `PURCHASE_INVOICE`.
 
 Invoice/base currencies may differ. A positive six-place rate states base
 currency per source currency unit, with date and evidence. Same currency requires
@@ -165,5 +165,6 @@ Run `npm --prefix backend run test:pr03c` for isolated integration checks and
 `npm --prefix backend run test:pr03c:release` for existing domain regressions,
 OpenAPI, frontend lint/build and isolated browser checks. The local development
 upgrade requires a verified backup and source/history comparison; see the
-[handoff](../pr-handoffs/PR-03C.md). Next is PR-04A export packing-list intake,
-export cards, country allocation and shipment linkage.
+[handoff](../pr-handoffs/PR-03C.md). PR-04A now implements export packing-list intake,
+export cards, country allocation and shipment linkage in m015. Next is PR-04B; see
+[export operations](export-operations.md).

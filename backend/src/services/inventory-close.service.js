@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import {reopenCalendar} from './vat-refund-guards.js';
 import { query } from '../db/query.js';
 import { AppError } from '../shared/AppError.js';
 import { entityId, object } from '../validators/auth.validators.js';
@@ -121,6 +122,7 @@ export async function reviewReopen(context,id,action,body){
   }
   await tx.query('UPDATE inventory_period_reopens SET status = ?,reviewed_by = ?,reviewed_at = UTC_TIMESTAMP(),review_reason = ? WHERE tenant_id = ? AND legal_entity_id = ? AND id = ?',[action==='approve'?'APPROVED':'REJECTED',context.identity.userId,input.reason,...scope,id]);
   for(const p of affected){
+   if(p.accountingClosed){const calendar=(await tx.query('SELECT accounting_period_id AS id FROM inventory_periods WHERE tenant_id=? AND legal_entity_id=? AND id=?',[...scope,p.periodId])).rows[0];await reopenCalendar(tx,context,calendar.id);}
    await tx.query('UPDATE inventory_period_controls SET current_snapshot_id = NULL WHERE tenant_id = ? AND legal_entity_id = ? AND period_id = ?',[...scope,p.periodId]);
    await tx.query("UPDATE inventory_periods SET status = 'OPEN' WHERE tenant_id = ? AND legal_entity_id = ? AND id = ?",[...scope,p.periodId]);
    if(p.accountingClosed)await tx.query("UPDATE accounting_periods SET status = 'OPEN',closed_at = NULL WHERE tenant_id = ? AND legal_entity_id = ? AND id = (SELECT accounting_period_id FROM inventory_periods WHERE tenant_id = ? AND legal_entity_id = ? AND id = ?)",[...scope,...scope,p.periodId]);

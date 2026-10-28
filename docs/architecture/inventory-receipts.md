@@ -149,4 +149,4 @@ keep baseline/OpenAPI copies synchronized.
 PR-02F is now implemented: see [corrections and release gate](inventory-corrections.md).
 It retains exact original receipt/transfer/issue sources and reservation counters,
 adds independent count/revaluation/reversal approval and cursor movement reads,
-and verifies all inventory stages. Preserve applied m001–m011. PR-03A/03B purchasing and invoice staging are implemented through m013; PR-03C is now implemented in m014; PR-04A is next. See [purchase receipt/accounting](purchase-receipts.md). See [purchasing](purchasing-foundation.md).
+and verifies all inventory stages. Preserve applied m001–m011. PR-03A/03B purchasing and invoice staging are implemented through m013; PR-03C is now implemented in m014; PR-04A is implemented in m015; PR-04B is next. See [export operations](export-operations.md). See [purchase receipt/accounting](purchase-receipts.md). See [purchasing](purchasing-foundation.md).

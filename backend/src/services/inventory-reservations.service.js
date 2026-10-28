@@ -68,7 +68,12 @@ async function insert(tx,table,columns,rows) {
 }
 export async function reserve(context,body) {
   const input=validate.reservation(body);
-  return entityWrite(context,'inventory.reservation.manage','inventory.reservation.create',input,async tx=>{
+  if(input.reference.startsWith('XPR-'))throw fail('SOURCE_RESERVED','Export reservations are created by the approved export shipment workflow.',403);
+  return entityWrite(context,'inventory.reservation.manage','inventory.reservation.create',input,tx=>reserveInTransaction(tx,context,input));
+}
+// Internal export adapter: caller owns authorization, entity lock and transaction.
+export async function reserveInTransaction(tx,context,body){
+    const input=validate.reservation(body);
     const scope=scopeArgs(context), periodId=await period(tx,context,input.reservationDate);
     const {rows:general}=await tx.query("SELECT id FROM inventory_pools WHERE tenant_id = ? AND legal_entity_id = ? AND kind = 'GENERAL' AND active = 1",scope);
     const stock=new Map(),precision=new Map();
@@ -98,7 +103,6 @@ export async function reserve(context,body) {
     await tx.query("UPDATE inventory_reservations SET status = 'ACTIVE' WHERE tenant_id = ? AND legal_entity_id = ? AND id = ?",[...scope,id]);
     await audit(tx,context,'inventory.reservation.created',id,{reference:input.reference,lineCount:lines.length,allocationCount:allocations.length,reason:input.reason});
     return reservationHeader(tx,context,id);
-  });
 }
 async function selectOutstanding(tx,context,reservationId,requested,reverse=false) {
   const {rows}=await tx.query(`SELECT a.id,a.reservation_line_id AS reservationLineId,a.allocation_number AS allocationNumber,a.warehouse_id AS warehouseId,a.sku_id AS skuId,a.layer_id AS layerId,a.pool_id AS poolId,
@@ -125,6 +129,12 @@ async function finishReservation(tx,context,id,cancel=false) {
 export async function release(context,reservationId,body,cancel=false) {
   const id=entityId(reservationId),input=validate.release(body,cancel);
   return entityWrite(context,'inventory.reservation.manage',`inventory.reservation.${cancel?'cancel':'release'}`,{id,...input},async tx=>{
+    if((await reservationHeader(tx,context,id)).reservation.reference.startsWith('XPR-'))throw fail('EXPORT_SHIPMENT_SOURCE','Release this reservation by cancelling its export shipment.');
+    return releaseInTransaction(tx,context,id,input,cancel);
+  });
+}
+export async function releaseInTransaction(tx,context,reservationId,body,cancel=false){
+    const id=entityId(reservationId),input=validate.release(body,cancel);
     const {reservation:r}=await reservationHeader(tx,context,id);
     if(r.status!=='ACTIVE')throw fail('INVALID_STATE','Only active reservations have stock to release.');
     const selected=await selectOutstanding(tx,context,id,input.lines,true),scope=scopeArgs(context),releaseId=randomUUID();
@@ -136,7 +146,6 @@ export async function release(context,reservationId,body,cancel=false) {
     await finishReservation(tx,context,id,cancel);
     await audit(tx,context,`inventory.reservation.${cancel?'cancelled':'released'}`,id,{releaseId,reason:input.reason,allocationCount:selected.length});
     return {...await reservationHeader(tx,context,id),releaseId};
-  });
 }
 export async function releases(context,id,input) {
   await authorize(context,'inventory.read');await reservationHeader({query},context,entityId(id));
@@ -182,6 +191,12 @@ export async function issueLines(context,id,input) {
 export async function postIssue(context,reservationId,body) {
   const id=entityId(reservationId),input=validate.issue(body);
   return entityWrite(context,'inventory.issue.post','inventory.issue.post',{id,...input},async tx=>{
+    if(input.reference.startsWith('XPI-')||(await reservationHeader(tx,context,id)).reservation.reference.startsWith('XPR-'))throw fail('EXPORT_SHIPMENT_SOURCE','Dispatch this reservation through its export shipment.');
+    return postIssueInTransaction(tx,context,id,input);
+  });
+}
+export async function postIssueInTransaction(tx,context,reservationId,body){
+    const id=entityId(reservationId),input=validate.issue(body);
     const scope=scopeArgs(context),hash=fingerprint({id,...input});
     const {rows:prior}=await tx.query('SELECT id,payload_hash AS hash,status FROM inventory_issues WHERE tenant_id = ? AND legal_entity_id = ? AND reference = ?',[...scope,input.reference]);
     if(prior.length){if(prior[0].hash!==hash||prior[0].status!=='POSTED')throw fail('SOURCE_CONFLICT','This dispatch reference already has different content.');return issueHeader(tx,context,prior[0].id);}
@@ -224,5 +239,4 @@ export async function postIssue(context,reservationId,body) {
     await finishReservation(tx,context,id);
     await audit(tx,context,'inventory.issue.posted',issueId,{reservationId:id,reference:input.reference,eventId,totalValue,currency,allocationCount:selected.length});
     return issueHeader(tx,context,issueId);
-  });
 }

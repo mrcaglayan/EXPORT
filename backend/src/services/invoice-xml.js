@@ -66,20 +66,20 @@ function taxes(node,documentCurrency,addIssue,lineKey){
   }
   return {taxAmount,subtotals};
 }
-export function parseInvoice(xml){
+export function parseInvoice(xml,{exportDocument=false}={}){
   const root=tree(xml),issues=[],addIssue=(code,message,lineKey=null)=>issues.push({code,message,lineKey});
   const uuid=field(root,'UUID',36).toLowerCase();if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(uuid))throw invalid('A valid invoice UUID is required.');
   const invoiceNumber=field(root,'ID',64),issueDate=date(field(root,'IssueDate',10)),documentCurrency=currency(field(root,'DocumentCurrencyCode',3));
   const profile=field(root,'ProfileID',40),invoiceType=field(root,'InvoiceTypeCode',40),customization=field(root,'CustomizationID',40);
   if(field(root,'UBLVersionID',10)!=='2.1'||customization!=='TR1.2')addIssue('UNSUPPORTED_VERSION','This import contract supports UBL 2.1 / TR1.2.');
-  if(!['TEMELFATURA','TICARIFATURA','EARSIVFATURA'].includes(profile)||!['SATIS','ISTISNA'].includes(invoiceType))addIssue('UNSUPPORTED_INVOICE_TYPE','This stage supports basic/commercial/e-Archive SATIS or ISTISNA purchase invoices.');
+  if(!['TEMELFATURA','TICARIFATURA','EARSIVFATURA',...(exportDocument?['IHRACAT']:[])].includes(profile)||!['SATIS','ISTISNA'].includes(invoiceType))addIssue('UNSUPPORTED_INVOICE_TYPE','This import contract does not support this invoice profile/type.');
   const copy=optional(root,'CopyIndicator',5);if(copy&&copy!=='false'&&copy!=='0')addIssue('COPY_INVOICE','A copy-marked invoice cannot be released for matching.');
   for(const name of ['AllowanceCharge','WithholdingTaxTotal'])if(all(root,name).some(n=>n.children.length||n.text.trim()))addIssue('UNSUPPORTED_ADJUSTMENT',`${name} is retained in XML and requires an additional import adapter.`);
   for(const name of ['TaxExchangeRate','PricingExchangeRate','PaymentExchangeRate','PaymentAlternativeExchangeRate'])for(const exchange of all(root,name)){
     if(!exchange.children.length&&!exchange.text.trim())continue;
-    if(optional(exchange,'SourceCurrencyCode',3)!==documentCurrency||optional(exchange,'TargetCurrencyCode',3)!==documentCurrency||optional(exchange,'CalculationRate',40)===''||amount(field(exchange,'CalculationRate',40))!=='1.000000')addIssue('UNSUPPORTED_EXCHANGE',`${name} requires a currency-conversion adapter.`);
+    if(!exportDocument&&(optional(exchange,'SourceCurrencyCode',3)!==documentCurrency||optional(exchange,'TargetCurrencyCode',3)!==documentCurrency||optional(exchange,'CalculationRate',40)===''||amount(field(exchange,'CalculationRate',40))!=='1.000000'))addIssue('UNSUPPORTED_EXCHANGE',`${name} requires a currency-conversion adapter.`);
   }
-  const supplier=party(root,'AccountingSupplierParty'),customer=party(root,'AccountingCustomerParty'),keys=new Set();
+  const supplier=party(root,'AccountingSupplierParty'),customer=exportDocument?exportBuyer(root):party(root,'AccountingCustomerParty'),keys=new Set();
   const lines=all(root,'InvoiceLine').map((node,index)=>{
     const lineKey=field(node,'ID',64);if(keys.has(lineKey))throw invalid('Invoice source line IDs must be unique.');keys.add(lineKey);
     const qtyNode=one(node,'InvoicedQuantity'),quantity=amount(value(qtyNode,40)),unitCode=qtyNode.attributes.unitCode;
@@ -116,6 +116,11 @@ export function parseInvoice(xml){
   const orderReferences=all(root,'OrderReference').map(n=>field(n,'ID',64));
   return {contractVersion:'UBLTR-STAGING-1',uuid,invoiceNumber,issueDate,currency:documentCurrency,profile,invoiceType,supplier,customer,lineExtensionTotal,netTotal,vatTotal:tax.taxAmount,grossTotal,payableTotal,orderReferences,issues,lines,
     sha256:createHash('sha256').update(xml,'utf8').digest('hex')};
+}
+
+function exportBuyer(root){
+  const role=all(root,'BuyerCustomerParty').length?'BuyerCustomerParty':'AccountingCustomerParty',p=one(one(root,role,'cac'),'Party','cac'),address=one(p,'PostalAddress','cac',false),countryNode=one(address,'Country','cac',false);
+  return {role,name:optional(one(p,'PartyName','cac',false),'Name',160)||optional(one(p,'PartyLegalEntity','cac',false),'RegistrationName',160),countryCode:optional(countryNode,'IdentificationCode',3),countryName:optional(countryNode,'Name',160),identities:all(p,'PartyIdentification').map(n=>{const id=one(n,'ID');return {scheme:id.attributes.schemeID??'',value:value(id,160)};})};
 }
 
 export const normalizedUnitPrice=line=>amount(new D(line.unitPrice).div(line.priceBaseQuantity).toFixed(6));

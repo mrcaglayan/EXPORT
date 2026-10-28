@@ -2,8 +2,8 @@
 
 **Status:** completed. This is the original bootstrap brief. PR-00A infrastructure
 and PR-00B identity and PR-00C accounting are also implemented; follow
-`PR_BUILD_INSTRUCTIONS.md` for the current sequence (PR-04A follows completed
-PR-01A/PR-01B/PR-01C/PR-02A/PR-02B/PR-02C/PR-02D/PR-02E/PR-02F/PR-03A/PR-03B/PR-03C and design baseline v12). Do not recreate the existing project. Deliverables and next-step wording
+`PR_BUILD_INSTRUCTIONS.md` for the current sequence (PR-06A follows completed
+PR-01A/PR-01B/PR-01C/PR-02A/PR-02B/PR-02C/PR-02D/PR-02E/PR-02F/PR-03A/PR-03B/PR-03C/PR-04A/PR-04B/PR-05A/PR-05B and design baseline v16). Do not recreate the existing project. Deliverables and next-step wording
 below describe the original bootstrap only.
 
 ## Context

@@ -14,10 +14,9 @@ PR-01C adds persistent product views, SKU drill-down, validation/duplicate
 feedback and the combined product release gate.
 PR-02A adds physical warehouses, virtual destination pools, calendar-linked
 inventory periods, movement-type definitions and inventory audit.
-Dashboard, Exports and VAT remain navigation placeholders.
+Dashboard remains an overview; Exports and VAT now have their implemented workflows.
 PR-02B adds receipt source layers, immutable physical/pool ledgers and stock
-balance views. Receipt posting currently accepts disposable test fixtures only;
-real purchase sources and VAT calculations remain planned.
+balance views. PR-03C later adds real purchase receipt posting; PR-05A adds source VAT attribution.
 PR-02C adds destination/GENERAL availability previews, explicit pool transfer
 requests, independent approval for country borrowing and atomic execution.
 PR-02D adds multi-SKU reservations, partial release/cancel and FIFO dispatch,
@@ -45,7 +44,18 @@ mapping, approved-order matching and independent decisions with retained revisio
 PR-03C adds independently reviewed commercial resolutions, complete goods receipts,
 exact stock cost, explicit VAT treatment and atomic balanced invoice journals.
 
-**Next: PR-04A — packing-list intake, export cards, allocations and shipments.**
+PR-04A adds immutable packing intake, reviewed numbered export cards and partial
+shipments linked to country/GENERAL reservations and exact stock dispatch.
+
+PR-04B adds externally issued outgoing XML matching, broker-reviewed declaration evidence, independently accepted partial exits and exact final closure. See [the contract](docs/architecture/export-documents-customs.md) and [handoff](docs/pr-handoffs/PR-04B.md).
+
+PR-05A adds original input VAT registration, exact purchase-layer attribution to accepted customs exits, independent approval and retained correction history. See [the VAT contract](docs/architecture/vat-source-attribution.md) and [handoff](docs/pr-handoffs/PR-05A.md).
+
+PR-05B adds reviewed non-stock invoice VAT, frozen monthly goods/turnover bases, exact direct-cost/overhead/ATİK allocations and independently reviewed corrections. Accounting can link non-stock supplier journals to their original invoice. See [the allocation contract](docs/architecture/vat-cost-allocation.md) and [handoff](docs/pr-handoffs/PR-05B.md).
+
+PR-06A adds original-source deduction review, closed-month KDV1 reconciliation, duplicate-safe refund requests and independent approval. See [the reconciliation contract](docs/architecture/vat-refund-reconciliation.md) and [handoff](docs/pr-handoffs/PR-06A.md).
+
+**Next: PR-06B — refund lists, claim package and refund payment/offset tracking.**
 The user-authorized [new design baseline](docs/design/PR01_PR02_database_specification.md)
 and [SQL reference](docs/design/PR01_PR02_schema.sql) were written on 21 October
 2026; the originally referenced files were not supplied.
@@ -630,3 +640,37 @@ See [the receipt contract](docs/architecture/purchase-receipts.md) and
 [PR-03C handoff](docs/pr-handoffs/PR-03C.md) for verification and boundaries.
 Posted purchases require a future coordinated financial reversal; partial physical
 receipts/accruals and credit notes are outside this complete-invoice workflow.
+
+## PR-04A export operations
+
+Open Exports to enter original packing lines or upload the provided UTF-8 CSV
+template, map existing SKUs and select the customer/foreign destination pool.
+Independent approval assigns an annual export card number. Partial shipments
+retain reviewed packing quantities, country-first/GENERAL reservations and exact
+source-layer dispatch. No silent country borrowing or double shipment is allowed.
+
+The supplied multi-sheet XLSX is a read-only format reference. Direct Excel
+selection/consolidation needs a dedicated adapter; current intake is manual/CSV.
+No real workbook rows, export cards, customers or stock are imported/seeded.
+
+Run `npm --prefix backend run test:pr04a` or the full
+`npm --prefix backend run test:pr04a:release`. m015 adds nine tables (82 total),
+keeping applied m001–m014 frozen. OpenAPI 0.16.0 documents 202 paths.
+See [the export contract](docs/architecture/export-operations.md) and
+[PR-04A handoff](docs/pr-handoffs/PR-04A.md). Dispatch alone creates no export
+invoice/COGS posting, customs clearance, VAT attribution or refund claim.
+
+PR-04B release checks: `npm --prefix backend run test:pr04b:release`; focused integration: `npm --prefix backend run test:pr04b`. Export document screens are under Exports. External issuing/transmission, customs submission, export sales/COGS journals and VAT/refund computation remain separate work.
+
+
+PR-05A checks: `npm --prefix backend run test:pr05a:release`; focused VAT checks:
+`npm --prefix backend run test:pr05a`. VAT → Input VAT sources registers posted
+purchase lines. Export attributions previews accepted customs quantities and
+requires independent review. Candidate VAT is separate from later deduction-period
+reconciliation and refund entitlement. Void corrections preserve original evidence.
+
+PR-05B checks: `npm --prefix backend run test:pr05b` and
+`npm --prefix backend run test:pr05b:release`. Use `db:migrate:local` for the verified
+repository-local database; preserve applied migrations.
+
+PR-06A checks: `npm --prefix backend run test:vat-refund` and `npm --prefix backend run test:pr06a`. KDV1 inputs distinguish the 301 export refund from other refund categories. Local upgrade uses `npm --prefix backend run db:migrate:local` after backup. No return or claim is filed by approving these preparation records.

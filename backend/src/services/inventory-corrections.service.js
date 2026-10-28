@@ -78,6 +78,7 @@ export async function create(context,body){const input=validate.correction(body)
  const scope=scopeArgs(context),periodId=await period(tx,context,input.postingDate);let raw;
   if(input.kind==='REVERSAL'){const e=await source(tx,context,input.originalEventId);
    if(e.receipt_id&&(await tx.query("SELECT id FROM stock_receipts WHERE tenant_id=? AND legal_entity_id=? AND id=? AND source_kind='PURCHASE_INVOICE'",[...scope,e.receipt_id])).rows.length)throw fail('FINANCIAL_REVERSAL_REQUIRED','Purchase receipts need a coordinated supplier invoice and financial reversal. A stock-only reversal is unavailable.');
+   if(e.issue_id&&(await tx.query('SELECT id FROM export_shipments WHERE tenant_id=? AND legal_entity_id=? AND issue_id=?',[...scope,e.issue_id])).rows.length)throw fail('EXPORT_REVERSAL_REQUIRED','Dispatched export shipments retain their source quantities. Use a coordinated export reversal workflow.');
    if(e.posting_date>input.postingDate)throw fail('SOURCE_DATE','Reversal cannot precede its source event.');raw=(await tx.query(`SELECT l.layer_id AS layerId,l.pool_id AS poolId,l.id AS sourceEntryId,-l.quantity AS quantity,-l.value AS value FROM inventory_pool_ledger l WHERE ${own('l')} AND l.event_id = ? ORDER BY l.layer_id,l.pool_id`,[...scope,input.originalEventId])).rows;}
  else raw=input.lines;
  if(!raw.length)throw fail('EMPTY_CORRECTION','The source event has no stock entries.');

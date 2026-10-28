@@ -1,0 +1,32 @@
+import {Router} from 'express';
+import {authConfiguration,requireAuth,csrfProtection} from '../middleware/auth.js';
+import {entityId} from '../validators/auth.validators.js';
+import * as packing from '../services/export-packing.service.js';
+import * as shipments from '../services/export-shipments.service.js';
+import {references,auditEvents} from '../services/export-references.service.js';
+export function exportRoutes(){const router=Router({mergeParams:true});router.use(authConfiguration,requireAuth,(req,_res,next)=>{req.exports={identity:req.identity,entityId:entityId(req.params.entityId),requestId:req.requestId,idempotencyKey:req.get('Idempotency-Key')};next();});const respond=fn=>async(req,res)=>res.json({...await fn(req),requestId:req.requestId});
+ router.get('/packing-template',respond(req=>packing.template(req.exports)));
+ router.post('/packing-preview',csrfProtection,respond(req=>packing.preview(req.exports,req.body)));
+ router.get('/packing-lists',respond(req=>packing.list(req.exports,req.query)));
+ router.post('/packing-lists',csrfProtection,respond(req=>packing.intake(req.exports,req.body)));
+ router.get('/packing-lists/:id',respond(req=>packing.get(req.exports,req.params.id)));
+ router.get('/packing-lists/:id/lines',respond(req=>packing.lines(req.exports,req.params.id,req.query)));
+ router.get('/packing-lists/:id/source',respond(req=>packing.source(req.exports,req.params.id)));
+ router.get('/packing-lists/:id/validation',respond(req=>packing.validation(req.exports,req.params.id,req.query)));
+ for(const kind of ['plans','decisions'])router.get(`/packing-lists/:id/${kind}`,respond(req=>packing.history(req.exports,req.params.id,kind,req.query)));
+ router.post('/packing-lists/:id/mappings',csrfProtection,respond(req=>packing.savePlan(req.exports,req.params.id,req.body)));
+ for(const action of ['submit','approve','reject','reopen','cancel','renew'])router.post(`/packing-lists/:id/${action}`,csrfProtection,respond(req=>packing.act(req.exports,req.params.id,action,req.body)));
+ router.get('/cards',respond(req=>packing.cards(req.exports,req.query)));
+ router.get('/cards/:id',respond(req=>packing.card(req.exports,req.params.id)));
+ router.get('/cards/:id/lines',respond(req=>shipments.cardLines(req.exports,req.params.id,req.query)));
+ router.post('/cards/:id/shipment-preview',csrfProtection,respond(req=>shipments.preview(req.exports,req.params.id,req.body)));
+ router.get('/cards/:id/shipments',respond(req=>shipments.list(req.exports,req.params.id,req.query)));
+ router.post('/cards/:id/shipments',csrfProtection,respond(req=>shipments.request(req.exports,req.params.id,req.body)));
+ router.get('/shipments/:id',respond(req=>shipments.get(req.exports,req.params.id)));
+ router.get('/shipments/:id/lines',respond(req=>shipments.lines(req.exports,req.params.id,req.query)));
+ router.get('/shipments/:id/sources',respond(req=>shipments.sources(req.exports,req.params.id,req.query)));
+ router.get('/shipments/:id/availability',respond(req=>shipments.availability(req.exports,req.params.id)));
+ for(const action of ['approve','reject','allocate','dispatch','cancel'])router.post(`/shipments/:id/${action}`,csrfProtection,respond(req=>shipments.act(req.exports,req.params.id,action,req.body)));
+ for(const resource of ['customers','warehouses','pools','skus','movement-types']){router.get('/'+resource,respond(req=>references(req.exports,resource,req.query)));router.get(`/${resource}/:id`,respond(req=>references(req.exports,resource,{},req.params.id)));}
+ router.get('/audit-events',respond(req=>auditEvents(req.exports,req.query)));return router;
+}

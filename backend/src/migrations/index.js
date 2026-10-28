@@ -1,3 +1,9 @@
+import vatClaims from './m020_vat_claim_packages.js';
+import vatRefunds from './m019_vat_refund_reconciliation.js';
+import vatCosts from './m018_vat_cost_allocation.js';
+import vatSources from './m017_vat_source_attribution.js';
+import exportCompliance from './m016_export_documents_customs.js';
+import exports from './m015_export_operations.js';
 import purchaseReceipts from './m014_purchase_receipts.js';
 import invoiceStaging from './m013_purchase_invoice_staging.js';
 import purchasing from './m012_purchasing_foundation.js';
@@ -18,7 +24,7 @@ import reservations from './m009_inventory_reservations_issues.js';
 import periodClose from './m010_inventory_period_close.js';
 
 // Freeze applied migration sources. Add a new registered file for later changes.
-export default [foundation, identity, accounting, products, classification, inventory, receipts, reallocations, reservations, periodClose, m011, purchasing, invoiceStaging, purchaseReceipts].map(migration => ({
+export default [foundation, identity, accounting, products, classification, inventory, receipts, reallocations, reservations, periodClose, m011, purchasing, invoiceStaging, purchaseReceipts, exports, exportCompliance, vatSources, vatCosts, vatRefunds, vatClaims].map(migration => ({
   ...migration,
   checksum: createHash('sha256')
     .update(readFileSync(new URL(`./${migration.key}.js`, import.meta.url))).digest('hex'),

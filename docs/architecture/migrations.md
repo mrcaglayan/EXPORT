@@ -266,4 +266,59 @@ immutability and workflow guards, an additional purchasing-order dependency guar
 and four explicit ADMIN invoice permissions. m012's old tables/trigger definitions
 remain unchanged. Verifiers coexist; no prior migration source is edited. Preserve
 m001–m013 after application. Back up before migration and verify rerun/row hashes.
+
+PR-03C adds `m014_purchase_receipts`: four scoped purchasing tables (73 total),
+reviewed commercial resolutions and atomic stock/journal source guards. It evolves
+the receipt source enum and exact value checks without changing existing rows.
+Its verifier assumes responsibility for the complete evolved m007/m008/m009/m011
+inventory contract, including required old permissions, tables and guards. m010,
+m012 and m013 keep their independent verification. Existing m001–m013 checksums
+remain unchanged. New purchase costs may differ from quantity × rounded unit cost;
+fixtures retain multiplication guards and all layers equal their exact source.
+Use the [receipt contract](purchase-receipts.md) and [handoff](../pr-handoffs/PR-03C.md).
 See [incoming invoice staging](purchase-invoice-staging.md).
+
+## PR-04A export operations
+
+m015_export_operations adds nine scoped tables (82 total), packing source/plan/
+review immutability, annual export-card sequences and exact partial shipment
+source links. It adds export-ownership guards to existing inventory source tables
+without altering their columns, earlier guards or data. All m001–m014 verifiers
+remain active under their existing ownership rules; m015 verifies its own tables,
+scoped keys/indexes/checks, exact guards and ADMIN permission contract. Historical
+migration recovery tests stop at their own registry version before adding later
+migrations. Preserve applied m001–m015 after upgrade. Back up before local
+migration and compare prior rows/history/source hashes after apply and rerun.
+See [export operations](export-operations.md) and [handoff](../pr-handoffs/PR-04A.md).
+
+## PR-04B outgoing documents and customs evidence
+
+m016_export_documents_customs adds eight scoped source/mapping/customs/decision tables (90 total), six explicit ADMIN permissions, immutable evidence, independent review, quantity coverage/commitment and outgoing dependency guards. It preserves applied m001–m015 and existing records. Verification checks exact columns, keys/FKs, CHECKs, trigger bodies and grants; fresh/retained upgrade, tamper detection and explicit recovery are tested. No real exporter settings, invoices, customs evidence, VAT or journals are seeded. See [the PR-04B contract](export-documents-customs.md). PR-05A follows in m017.
+
+
+## PR-05A input VAT and source attribution
+
+m017_vat_source_attribution adds four scoped tables (94 total), four explicit ADMIN
+permissions and vat_journal_line_scope on existing journal_lines. It preserves
+applied m001–m016 and every original purchase/stock/journal/customs row. Immutable
+source/line/decision guards, original-layer checks, independent review and exact
+source/exit commitments protect analytical attribution. Void retains original approval
+and releases amounts only after independent acceptance. Verification checks exact
+columns, indexes/FKs, CHECKs and trigger bodies; retained/fresh upgrade, rerun, tamper
+detection and explicit recovery are covered. No VAT sources/attributions or business
+records are seeded. See [the PR-05A contract](vat-source-attribution.md). PR-05B follows in m018.
+
+## PR-05B cost, overhead and ATİK allocation
+
+m018_vat_cost_allocation adds six scoped tables (100 total), six ADMIN request/review
+permissions and additive immutable-history, independent-review, original-debit,
+goods/cost collision, frozen-month, amount/priority and dependent-correction guards.
+Preserve applied m001–m017. No business rows or accounting settings are seeded.
+The migration verifies its columns, indexes/FKs, CHECK presence, exact trigger bodies
+and permissions; interrupted migration requires explicit reviewed recovery.
+See [the allocation contract](vat-cost-allocation.md) and
+[PR-05B handoff](../pr-handoffs/PR-05B.md). Next: PR-06A.
+
+## PR-06A deduction, KDV1 reconciliation and refund requests
+
+m019_vat_refund_reconciliation adds six scoped tables (106 total), six ADMIN request/review permissions and additive immutable-history, independent-review, original-source commitment, carry-chain and dependency guards. It freezes the accounting calendar behind an active reconciliation and preserves m001–m018 byte-for-byte. No business rows are seeded. Verification checks columns, indexes/FKs, CHECK presence, trigger bodies and permissions. Fresh/retained migration, rerun, drift and explicit recovery are tested. See [the contract](vat-refund-reconciliation.md) and [handoff](../pr-handoffs/PR-06A.md). Next: PR-06B.

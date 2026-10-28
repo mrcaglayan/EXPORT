@@ -46,7 +46,7 @@ test('PR-02B receipt sources, exact layers, immutable ledgers and atomic project
   await t.test('forward upgrade preserves prior data/history and grants ADMIN only', async () => {
     assert.deepEqual((await query(`SELECT * FROM schema_migrations WHERE migration_key IN (${history.map(() => '?').join(',')}) ORDER BY migration_key`, history.map(row => row.migration_key))).rows, history);
     assert.deepEqual((await query('SELECT * FROM warehouses')).rows, oldWarehouse);
-    assert.equal((await query('SHOW TABLES')).rows.length,73);
+    assert.equal((await query('SHOW TABLES')).rows.length,111);
     assert.ok(Object.values(await counts()).every(n => n === 0));
     assert.ok((await permissionsFor(ctx().identity, ctx().entityId)).includes('inventory.receipt.post'));
     assert.ok(!(await permissionsFor(ctx(f.secondEntity, f.viewer).identity, f.secondEntity)).includes('inventory.receipt.post'));

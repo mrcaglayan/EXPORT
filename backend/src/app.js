@@ -15,6 +15,9 @@ import { productRoutes } from './routes/products.routes.js';
 import { inventoryRoutes } from './routes/inventory.routes.js';
 import { purchasingRoutes } from './routes/purchasing.routes.js';
 import { purchaseInvoiceRoutes } from './routes/purchase-invoices.routes.js';
+import { exportRoutes } from './routes/exports.routes.js';
+import {exportComplianceRoutes} from './routes/export-compliance.routes.js';
+import {vatRoutes} from './routes/vat.routes.js';
 
 export function createApp({ config = getServerConfig(), checkReadiness, logger } = {}) {
   const app = express();
@@ -48,6 +51,9 @@ export function createApp({ config = getServerConfig(), checkReadiness, logger }
   app.use('/api/v1/entities/:entityId/purchasing', purchaseInvoiceRoutes());
   app.use('/api/v1/entities/:entityId/purchasing', purchasingRoutes());
   app.use('/api/v1/entities/:entityId/accounting', accountingRoutes());
+  app.use('/api/v1/entities/:entityId/exports', exportComplianceRoutes());
+  app.use('/api/v1/entities/:entityId/exports', exportRoutes());
+  app.use('/api/v1/entities/:entityId/vat', vatRoutes());
 
   app.use((_req, _res, next) => {
     next(new AppError(404, 'NOT_FOUND', 'Route not found.'));

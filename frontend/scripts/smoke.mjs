@@ -1,5 +1,11 @@
+import {checkVatClaims,checkVatClaimsReader} from './vat-claim-smoke.mjs'
+import {checkVatRefunds,checkVatRefundsReader} from './vat-refund-smoke.mjs'
+import {checkVatCosts,checkVatCostsReader} from './vat-cost-smoke.mjs'
+import {checkVat,checkVatReader} from './vat-smoke.mjs'
 import { checkInvoices, checkInvoiceReader } from './invoices-smoke.mjs'
 import {checkPurchaseReceipts} from './purchase-receipts-smoke.mjs'
+import {checkExports,checkExportReader} from './exports-smoke.mjs'
+import {checkExportCompliance,checkExportComplianceReader} from './export-compliance-smoke.mjs'
 import { checkPurchasing, checkPurchasingReader } from './purchasing-smoke.mjs'
 import assert from 'node:assert/strict'
 import { mkdir, readFile } from 'node:fs/promises'
@@ -34,7 +40,7 @@ await mkdir(artifacts, { recursive: true })
 
 function waitForPageContent(title) {
   const name = title === 'Dashboard' ? /Every export starts with/
-    : title === 'Settings' ? 'Workspace connection' : title === 'Accounting' ? 'Chart of accounts' : title === 'Products' ? 'Product catalogue' : title === 'Purchasing' ? 'Purchasing' : title === 'Inventory' ? 'Inventory setup' : `A home for your ${title.toLowerCase()}`
+    : title === 'Settings' ? 'Workspace connection' : title === 'Accounting' ? 'Chart of accounts' : title === 'Products' ? 'Product catalogue' : title === 'Purchasing' ? 'Purchasing' : title === 'Exports' ? 'Export operations' : title === 'VAT' ? 'VAT register' : title === 'Inventory' ? 'Inventory setup' : `A home for your ${title.toLowerCase()}`
   return page.getByRole('heading', { level: 1, name }).waitFor()
 }
 
@@ -91,6 +97,12 @@ try {
     await checkPurchasing(page, base, artifacts, browser)
     await checkInvoices(page, base, artifacts, browser)
     await checkPurchaseReceipts(page, base, artifacts, browser)
+    await checkExports(page, base, artifacts, browser)
+    await checkExportCompliance(page, base, artifacts, browser)
+    await checkVat(page, base, artifacts, browser)
+    await checkVatCosts(page, base, artifacts, browser)
+    await checkVatRefunds(page, base, artifacts, browser)
+  await checkVatClaims(page,base,artifacts,browser)
     await page.goto(base)
   }
   await page.getByRole('link', { name: 'Explore products', exact: true }).click()
@@ -248,6 +260,12 @@ try {
     await page.getByRole('heading', { name: 'Stock integrity: MATCHED', exact: true }).waitFor()
     await checkPurchasingReader(page, base)
     await checkInvoiceReader(page, base)
+    await checkExportReader(page, base)
+    await checkExportComplianceReader(page, base)
+    await checkVatReader(page, base)
+    await checkVatCostsReader(page, base)
+    await checkVatRefundsReader(page, base)
+  await checkVatClaimsReader(page,base)
     await page.getByRole('button', { name: 'Open navigation' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Sign out', exact: true }).click()
     await page.getByRole('heading', { name: 'Sign in', exact: true }).waitFor()

@@ -1,8 +1,8 @@
 # PR-00AA handoff — Project Foundation
 
-**Current status — 27 October 2026:** PR-03C atomic purchase receipt/accounting is
-implemented; see the [PR-03C handoff](PR-03C.md). PR-04A is next. The dated results
-below describe the PR-00AA delivery and its original next-step context.
+**Current status — 28 October 2026:** PR-05B is implemented; see the
+[PR-05B handoff](PR-05B.md). PR-06A is next. Dated results below retain their
+original delivery scope and historical next-step context.
 
 Historical handoff. PR-00A, PR-00B and PR-00C have since been implemented; the
 [PR-00C handoff](PR-00C.md) records current status and the PR-01A design prerequisite.

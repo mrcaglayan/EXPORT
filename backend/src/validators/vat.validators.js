@@ -1,0 +1,9 @@
+import {object,text,entityId,invalid} from './auth.validators.js';
+import {page} from './accounting.validators.js';
+import {positive} from './receipts.validators.js';
+export const treatments=['CANDIDATE','HOLD','EXCLUDED'];
+export function listing(input){object(input,['limit','offset','q','status']);return {...page({limit:input.limit,offset:input.offset}),...(input.q!==undefined?{q:text(input.q,160,0)}:{}),...(input.status!==undefined?{status:text(input.status,24)}:{})};}
+export const reason=body=>{object(body,['reason']);return {reason:text(body.reason,255)};};
+export const evidence=body=>{object(body,['reason','evidence']);return {reason:text(body.reason,255),evidence:text(body.evidence,255)};};
+export function enrollment(body){object(body,['purchaseReceiptLineIds','reason','evidence']);if(!Array.isArray(body.purchaseReceiptLineIds)||!body.purchaseReceiptLineIds.length)throw invalid();const ids=body.purchaseReceiptLineIds.map(entityId);if(new Set(ids).size!==ids.length)throw invalid();return {purchaseReceiptLineIds:ids.sort(),reason:text(body.reason,255),evidence:text(body.evidence,255)};}
+export function attribution(body){object(body,['reference','clearanceId','treatment','eligibilityEvidence','reason','evidence','lines']);if(!treatments.includes(body.treatment)||!Array.isArray(body.lines)||!body.lines.length)throw invalid();const seen=new Set(),lines=body.lines.map(l=>{object(l,['clearanceLineId','quantity']);const clearanceLineId=entityId(l.clearanceLineId);if(seen.has(clearanceLineId))throw invalid();seen.add(clearanceLineId);return {clearanceLineId,quantity:positive(l.quantity)};}).sort((a,b)=>a.clearanceLineId.localeCompare(b.clearanceLineId));return {reference:text(body.reference,64),clearanceId:entityId(body.clearanceId),treatment:body.treatment,eligibilityEvidence:text(body.eligibilityEvidence,255),reason:text(body.reason,255),evidence:text(body.evidence,255),lines};}

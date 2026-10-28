@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {allocateVat,convertVat,vatFields,zero} from '../src/services/vat-amounts.js';
+import {micro,decimal} from '../src/services/inventory-stock.js';
+const source=(q,tax)=>({quantity:q,nativeVat:tax,convertedVat:tax,deductibleVat:tax,capitalizedVat:zero});
+const used=()=>({quantity:zero,...Object.fromEntries(vatFields.map(k=>[k,zero]))});
+test('5000 original VAT on 100 goods attributes 2000 to 40 accepted goods',()=>assert.equal(allocateVat(source('100','5000'),used(),'40').deductibleVat,'2000.000000'));
+test('partial allocations take exact six-decimal residual and release exact reservations',()=>{const s=source('3','0.01'),u=used(),a=allocateVat(s,u,'1');assert.equal(a.deductibleVat,'0.003333');Object.assign(u,{quantity:'1.000000',...a});const b=allocateVat(s,u,'1');u.quantity='2.000000';for(const k of vatFields)u[k]=decimal(micro(u[k])+micro(b[k]));assert.equal(allocateVat(s,u,'1').deductibleVat,'0.003334');u.quantity='1.000000';for(const k of vatFields)u[k]=b[k];assert.equal(allocateVat(s,u,'2').deductibleVat,'0.006667');});
+test('rounded micro amounts never exceed source; last quantity gets only remainder',()=>{const s=source('3','0.000002'),u={quantity:'2.000000',nativeVat:'0.000002',convertedVat:'0.000002',deductibleVat:'0.000002',capitalizedVat:zero};assert.equal(allocateVat(s,u,'0.5').deductibleVat,zero);assert.equal(allocateVat(s,u,'1').deductibleVat,zero);assert.throws(()=>allocateVat(s,u,'1.000001'),{code:'VAT_SOURCE_EXCEEDED'});});
+test('large values use exact precision and FX preserves source VAT',()=>{assert.equal(convertVat('999999999999.999999','1.123456'),'1123455999999.999999');const s=source('99999999999999.999999','99999999999999.999999');assert.equal(allocateVat(s,used(),'0.000001').deductibleVat,'0.000001');});

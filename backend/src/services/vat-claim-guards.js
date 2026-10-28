@@ -1,0 +1,5 @@
+import {scopeArgs} from './entity-context.js';
+import {own,fail} from './purchasing-context.js';
+const active="('REQUESTED','APPROVED','VOID_REQUESTED')";
+export async function refundPackageGuard(tx,c,id){if((await tx.query(`SELECT p.id FROM vat_claim_packages p JOIN vat_claim_package_requests l ON l.package_id=p.id WHERE ${own('p')} AND l.refund_id=? AND p.status IN ${active} LIMIT 1`,[...scopeArgs(c),id])).rows.length)throw fail('VAT_PACKAGE_DEPENDENCY','Release the dependent claim package before changing its original refund request.');}
+export async function exportPackageGuard(tx,c,period){if((await tx.query(`SELECT p.id FROM vat_claim_packages p JOIN vat_claim_package_requests l ON l.package_id=p.id JOIN vat_refund_requests r ON r.id=l.refund_id WHERE ${own('p')} AND r.period=? AND p.status IN ${active} LIMIT 1`,[...scopeArgs(c),period])).rows.length)throw fail('VAT_PACKAGE_PERIOD','Release the dependent claim package before accepting additional exports in its retained sales month.');}

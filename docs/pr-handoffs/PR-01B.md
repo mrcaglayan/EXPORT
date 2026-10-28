@@ -1,8 +1,8 @@
 # PR-01B handoff — Specifications, GTİP review and supplier aliases
 
-**Current status — 27 October 2026:** PR-03C atomic purchase receipt/accounting is
-implemented; see the [PR-03C handoff](PR-03C.md). PR-04A is next. The dated results
-below describe the PR-01B delivery and its original next-step context.
+**Current status — 28 October 2026:** PR-05B is implemented; see the
+[PR-05B handoff](PR-05B.md). PR-06A is next. Dated results below retain their
+original delivery scope and historical next-step context.
 
 Completed **21 October 2026 (Europe/Istanbul)**. The local app remains at
 **http://localhost:5173/products**. Next is **PR-01C — product UX polish and the

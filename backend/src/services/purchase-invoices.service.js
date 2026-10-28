@@ -9,6 +9,7 @@ import {readDocument} from './purchasing-documents.service.js';
 import {parseInvoice} from './invoice-xml.js';
 import {fields,lineFields,readInvoice,readPlan,sourceLines,mappings,settings,orderSources} from './invoice-records.js';
 import {inspect} from './invoice-validation.js';
+import {retainCostInvoice} from './vat-cost-guards.js';
 export async function list(context,input){await authorize(context,'purchasing.read');const p=validate.listing(input,['q','status']),args=scopeArgs(context);let where=own('i');if(p.q){where+=" AND (i.invoice_number LIKE ? ESCAPE '!' OR i.supplier_name LIKE ? ESCAPE '!' OR i.uuid LIKE ? ESCAPE '!')";args.push(...Array(3).fill(pattern(p.q)));}if(p.status){where+=' AND i.status=?';args.push(p.status);}return pageRows(fields,'purchase_invoices i',where,args,p,'i.issue_date DESC,i.imported_at DESC,i.id');}
 export async function get(context,id){await authorize(context,'purchasing.read');id=entityId(id);const item=await readInvoice({query},context,id);return {item,plan:await readPlan({query},context,id,item.revision)};}
 export async function lines(context,id,input){
@@ -74,6 +75,7 @@ export async function act(context,invoiceId,action,body){
   const id=entityId(invoiceId),input=validate.reason(body);if(!['submit','approve','reject','cancel','reopen'].includes(action))throw notFound();
   return entityWrite(context,action==='submit'?'purchasing.invoice.map':'purchasing.invoice.review',`purchasing.invoice.${action}`,{id,...input},async tx=>{
     const item=await readInvoice(tx,context,id,true),scope=scopeArgs(context);
+    if(action==='cancel')await retainCostInvoice(tx,context,item);
     const allowed={submit:['STAGED'],approve:['REQUESTED'],reject:['REQUESTED'],cancel:['STAGED','REQUESTED','READY'],reopen:['REQUESTED','READY','REJECTED']};
     if(!allowed[action].includes(item.status))throw fail('INVALID_STATE','Invoice matching is not awaiting this action.');
     if(['cancel','reopen'].includes(action)&&(await tx.query('SELECT id FROM purchase_receipts WHERE tenant_id=? AND legal_entity_id=? AND active_invoice_id=?',[...scope,id])).rows.length)throw fail('DEPENDENT_RECEIPT','Cancel the unposted receipt before changing invoice matching. A posted receipt retains its invoice approval.');

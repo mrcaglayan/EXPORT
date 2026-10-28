@@ -13,6 +13,7 @@ import {readInvoice} from './invoice-records.js';
 import {inspect} from './invoice-validation.js';
 import {postPurchaseInTransaction} from './inventory-receipts.service.js';
 import {postInTransaction as postJournal,validatePosting} from './journal.service.js';
+import {retainCostInvoice} from './vat-cost-guards.js';
 const D=Decimal.clone({precision:60,rounding:Decimal.ROUND_HALF_UP});
 const zero='0.000000';
 const money=x=>amount(new D(x).toFixed(6));
@@ -36,13 +37,14 @@ async function references(tx,context,input,lines){
  if(movement.effect!=='RECEIPT')throw fail('MOVEMENT_EFFECT_MISMATCH','Choose a receipt movement type.');
  const pools=[];for(const id of [...new Set(input.lines.flatMap(l=>l.allocations.map(a=>a.poolId)))].sort())pools.push(await read('inventory_pools',id));
  const skus=await skuReferences(tx,context,lines.map(l=>l.skuId));
- for(const l of lines)for(const a of l.allocations)checkPrecision(a.quantity,skus.get(l.skuId));
+ for(const l of lines){const sku=skus.get(l.skuId);l.skuCode=sku.code;l.skuName=sku.name;for(const a of l.allocations)checkPrecision(a.quantity,sku);}
  const periods=(await tx.query(`SELECT i.id,i.status,a.status AS accountingStatus FROM inventory_periods i JOIN accounting_periods a ON a.id=i.accounting_period_id AND a.tenant_id=i.tenant_id AND a.legal_entity_id=i.legal_entity_id WHERE ${own('i')} AND ? BETWEEN a.start_date AND a.end_date`,[...scopeArgs(context),input.postingDate])).rows;
  if(periods.length!==1)throw fail('PERIOD_NOT_FOUND','Configure one inventory period for the posting date.',422);
  if(periods[0].status!=='OPEN'||periods[0].accountingStatus!=='OPEN')throw fail('PERIOD_CLOSED','Both inventory and accounting periods must be open.');
  return {warehouse,movement,pools};
 }
 async function build(tx,context,invoice,input){
+ await retainCostInvoice(tx,context,invoice);
  if(invoice.status!=='READY')throw fail('INVOICE_NOT_READY','Independently approve invoice matching before receiving goods.');
  const checked=await inspect(tx,context,invoice);if(!checked.canSubmit)throw fail('INVOICE_EXCEPTIONS','Resolve invoice matching exceptions and renew any stale approval.');
  const p=await policy(tx,context);if(!p)throw fail('POSTING_NOT_CONFIGURED','Configure stock, deductible VAT and supplier payable accounts.');

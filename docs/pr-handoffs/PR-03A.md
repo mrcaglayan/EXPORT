@@ -1,8 +1,8 @@
 # PR-03A handoff — Purchasing foundation
 
-**Current status — 27 October 2026:** PR-03C atomic purchase receipt/accounting is
-implemented; see the [PR-03C handoff](PR-03C.md). PR-04A is next. The dated delivery
-below retains its original next-step context.
+**Current status — 28 October 2026:** PR-05B is implemented; see the
+[PR-05B handoff](PR-05B.md). PR-06A is next. Dated results below retain their
+original delivery scope and historical next-step context.
 
 Completed **27 October 2026 (Europe/Istanbul)**. Next is **PR-03B: İZİBİZİ
 e-Fatura XML intake, UUID deduplication, source-line mapping and document matching**.

@@ -2,18 +2,24 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Field, Pager, inputStyle } from './accounting-ui'
 import { analyzeJournalLines, displayAmount } from './journal-entry'
+import {useAuth} from '@/auth/auth-context'
+import {useProducts} from '@/pages/products/useProducts'
+import {RecordSelect} from '@/pages/exports/compliance-ui'
 
 const blankLine = () => ({ id: crypto.randomUUID(), accountId: '', accountLabel: '', description: '', debit: '', credit: '' })
 const pageSize = 25
 
 export default function JournalEntryForm({ accounts, currency, canPost, canRequest, action }) {
+  const {profile,can}=useAuth(),purchasing=`/entities/${profile.activeEntity.id}/purchasing`
+  const [sourceKind,setSourceKind]=useState('MANUAL'),[invoiceId,setInvoiceId]=useState(null)
+  const invoice=useProducts(purchasing,`invoices/${invoiceId}`,{},0,sourceKind==='VAT_COST_INVOICE'&&Boolean(invoiceId))
   const [form, setForm] = useState({ documentDate: '', postingDate: '', description: '' })
   const [lines, setLines] = useState(() => [blankLine(), blankLine()])
   const [linePage, setLinePage] = useState(0)
   const [sourceId, setSourceId] = useState(() => crypto.randomUUID())
   const [mode, setMode] = useState(canPost ? 'journals' : 'posting-requests')
   const summary = analyzeJournalLines(lines)
-  const ready = summary.valid && form.documentDate && form.postingDate && form.description.trim()
+  const ready = summary.valid && form.documentDate && form.postingDate && form.description.trim() && (sourceKind==='MANUAL'||invoice.data?.item.uuid)
   const options = accounts.data.items.filter(account => account.active)
   const lastPage = Math.floor((lines.length - 1) / pageSize)
   const currentPage = Math.min(linePage, lastPage)
@@ -23,9 +29,10 @@ export default function JournalEntryForm({ accounts, currency, canPost, canReque
   async function submit(event) {
     event.preventDefault()
     if (!ready || action.busy) return
-    const input = { ...form, currency, sourceModule: 'MANUAL', sourceId, lines: summary.lines }
+    const input = { ...form, currency, sourceModule: sourceKind, sourceId:sourceKind==='MANUAL'?sourceId:invoice.data.item.uuid, lines: summary.lines }
     if (await action.submit(mode, input, mode === 'journals' ? 'Journal posted.' : 'Posting request queued. It has not been posted yet.')) {
       setSourceId(crypto.randomUUID())
+      setSourceKind('MANUAL');setInvoiceId(null)
       setForm(current => ({ ...current, description: '' }))
       setLines([blankLine(), blankLine()])
       setLinePage(0)
@@ -34,6 +41,7 @@ export default function JournalEntryForm({ accounts, currency, canPost, canReque
   return <form onSubmit={submit} onChange={action.clearFeedback} aria-label="New journal" aria-busy={action.busy} className="mt-6 rounded-xl bg-slate-50 p-4 sm:p-5">
     <fieldset disabled={action.busy} className="min-w-0 space-y-5">
       <legend className="mb-4 font-semibold">New journal</legend>
+      {can('purchasing.read')&&can('vat.cost.source.request')&&<><Field label="Journal source"><select className={inputStyle} value={sourceKind} onChange={e=>setSourceKind(e.target.value)}><option value="MANUAL">Manual entry</option><option value="VAT_COST_INVOICE">Non-stock supplier invoice</option></select></Field>{sourceKind==='VAT_COST_INVOICE'&&<><RecordSelect base={purchasing} resource="invoices" label="Non-stock supplier invoice" value={invoiceId} onChange={setInvoiceId} revision={0} format={i=>`${i.invoiceNumber} · ${i.supplierName} · ${i.status}`}/><p className="text-sm text-slate-600">Record the original expense or asset, input VAT and supplier payable for this invoice. Check the posted journal before registering its cost VAT in the VAT register.</p></>}</>}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Document date" type="date" required {...field('documentDate')} />
         <Field label="Posting date" type="date" required {...field('postingDate')} />

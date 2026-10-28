@@ -9,6 +9,12 @@ import { accountingWrite, audit, authorize, scopeArgs, settings, notFound } from
 export async function validatePosting(tx, context, input) {
   const config = await settings(tx, context);
   if (input.currency !== config.baseCurrency) throw new AppError(422, 'CURRENCY_MISMATCH', 'Journal currency must match the entity base currency.');
+  if(input.sourceModule==='VAT_COST_INVOICE'){
+    const {rows}=await tx.query("SELECT id,issue_date AS issueDate FROM purchase_invoices WHERE tenant_id=? AND legal_entity_id=? AND uuid=? AND status<>'CANCELLED'",[...scopeArgs(context),input.sourceId]);
+    const invoice=rows[0];
+    if(!invoice||String(invoice.issueDate instanceof Date?invoice.issueDate.toISOString().slice(0,10):invoice.issueDate)>input.postingDate)throw new AppError(422,'VAT_COST_INVOICE','Choose a retained supplier invoice dated on or before posting.');
+    if((await tx.query('SELECT id FROM purchase_receipts WHERE tenant_id=? AND legal_entity_id=? AND active_invoice_id=?',[...scopeArgs(context),invoice.id])).rows.length)throw new AppError(409,'VAT_COST_GOODS_COLLISION','This invoice already has a goods receipt. Use its original purchase journal.');
+  }
   const { rows: periods } = await tx.query(`SELECT id, status FROM accounting_periods
     WHERE tenant_id = ? AND legal_entity_id = ? AND ? BETWEEN start_date AND end_date FOR SHARE`,
   [...scopeArgs(context), input.postingDate]);

@@ -29,12 +29,12 @@ test('PR-03C reviewed commercial exceptions and atomic multi-line purchase stock
  const original=(await invoices.importXml(ctx(),{xml:invoiceXml(),fileName:'retained.xml',evidence:'Synthetic retained source'})).item;
  const history=(await query('SELECT * FROM schema_migrations ORDER BY migration_key')).rows,sourceBefore=(await query('SELECT * FROM purchase_invoices WHERE id=?',[original.id])).rows;
  await t.test('m014 preserves m001–m013 history and source rows, reruns, verifies guards and explicit recovery',async()=>{
-  await runMigrations();await runMigrations();assert.equal((await query('SHOW TABLES')).rows.length,73);
+  const upgradeReceipt=options=>runMigrations({...options,migrations:migrations.slice(0,14)});await upgradeReceipt();await upgradeReceipt();assert.equal((await query('SHOW TABLES')).rows.length,73);
   assert.deepEqual((await query("SELECT * FROM schema_migrations WHERE migration_key<>'m014_purchase_receipts' ORDER BY migration_key")).rows,history);
   assert.deepEqual((await query('SELECT * FROM purchase_invoices WHERE id=?',[original.id])).rows,sourceBefore);
   for(const [table]of additions)assert.equal((await query(`SELECT COUNT(*) AS n FROM ${table}`)).rows[0].n,0);
-  const tr=triggers.find(t=>t[0]==='purchase_receipt_update');await getMigrationPool().query(`DROP TRIGGER ${tr[0]}`);try{await assert.rejects(runMigrations(),/trigger differs/);}finally{await getMigrationPool().query(`CREATE TRIGGER ${tr[0]} BEFORE ${tr[1]} ON ${tr[2]} FOR EACH ROW ${tr[3]}`);}
-  await query("UPDATE schema_migrations SET status='running' WHERE migration_key='m014_purchase_receipts'");await assert.rejects(runMigrations(),{code:'MIGRATION_RECOVERY_REQUIRED'});await runMigrations({retryKey:'m014_purchase_receipts'});
+  const tr=triggers.find(t=>t[0]==='purchase_receipt_update');await getMigrationPool().query(`DROP TRIGGER ${tr[0]}`);try{await assert.rejects(upgradeReceipt(),/trigger differs/);}finally{await getMigrationPool().query(`CREATE TRIGGER ${tr[0]} BEFORE ${tr[1]} ON ${tr[2]} FOR EACH ROW ${tr[3]}`);}
+  await query("UPDATE schema_migrations SET status='running' WHERE migration_key='m014_purchase_receipts'");await assert.rejects(upgradeReceipt(),{code:'MIGRATION_RECOVERY_REQUIRED'});await upgradeReceipt({retryKey:'m014_purchase_receipts'});await runMigrations();
  });
  await query('INSERT INTO user_role_assignments (tenant_id,user_id,role_id,legal_entity_id) VALUES (?,?,?,?)',[f.alpha.tenantId,f.noAccess,f.alpha.roleId,f.alpha.entityId]);
  await accounting.configure(ctx(),{baseCurrency:'TRY'});const year=(await accounting.createYear(ctx(),{code:'2026',startDate:'2026-01-01',endDate:'2026-12-31'})).fiscalYear;

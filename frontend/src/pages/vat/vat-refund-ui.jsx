@@ -1,0 +1,7 @@
+export function RefundSummary({kind,item}){
+ const plan=item.plan??item
+ return <div className="space-y-2 rounded-lg border border-slate-200 p-4 text-sm">
+  <p><strong>{item.period}</strong> · TRY</p>
+  {kind==='deduction'?<><p>Deducted VAT: {item.deductedVat} · Previously refunded: {item.priorRefundedVat}</p><p>Book date: {item.bookDate} · Tax-event date: {item.taxEventDate}</p></>:kind==='reconciliation'?<><p>Registered input VAT: {item.registeredVat} · Rounding difference: {plan.roundingDifference}</p><p>Total deductions: {item.totalDeductions} · Output VAT: {item.outputVat}</p><p>Declared export refund: {item.exportRefundVat} · Prior external requests: {item.externalClaimedVat}</p><p>Payable VAT: {item.payableVat} · Closing carry: {item.closingCarry}</p></>:<><p>Requested VAT: {item.requestedVat} · {item.method==='CASH'?'Cash':'Offset'} · {{NONE:'Standard documents',YMM:'YMM report',GUARANTEE:'Guarantee',TAX_REVIEW:'Tax-inspection report'}[item.assurance]}</p><p>Proposed filing: {item.proposedFilingDate} · Request deadline: {plan.rules?.filingDeadline}</p><p>{plan.rules?.processingStatus==='WAITING_AGGREGATION'?'This retained calculation is below the processing threshold. The threshold is not deducted from the request amount.':'Supporting documents and the applicable procedure must be verified before filing.'}</p><p>Approval prepares the request internally. It does not submit a tax return or refund request.</p></>}
+ </div>
+}

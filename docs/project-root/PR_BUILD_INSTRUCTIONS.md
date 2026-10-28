@@ -1,12 +1,12 @@
 # Coding-Agent PR Execution Instructions — Export Accounting Application
 
-Use this alongside `EXPORT_IMPLEMENTATION_ROADMAP.md` and the **new, user-authorized 21 October baseline** `PR01_PR02_database_specification.md` / `PR01_PR02_schema.sql`. Authoritative copies are tracked in `export-accounting/docs/design/`. The original referenced inputs were never supplied; the new baseline is not presented as a recovered original. Baseline v9 implements all PR-01/PR-02 contracts through m011; purchasing remains planned.
+Use this alongside `EXPORT_IMPLEMENTATION_ROADMAP.md` and the **new, user-authorized 21 October baseline** `PR01_PR02_database_specification.md` / `PR01_PR02_schema.sql`. Authoritative copies are tracked in `export-accounting/docs/design/`. The original referenced inputs were never supplied; the new baseline is not presented as a recovered original. Baseline v17 covers the implemented product, inventory, purchasing, export and VAT-source/allocation contracts through m019.
 
 ## Overall coding contract
 
-**Current status (27 October 2026):** PR-00AA through PR-00C, PR-01A through PR-01C, PR-02A through PR-02F and PR-03A/PR-03B are implemented.
-Next is PR-04A — packing-list intake, export cards, country allocation and shipments.
-See `docs/pr-handoffs/PR-03B.md` from the repository root. Earlier task briefs below remain the historical scope
+**Current status (28 October 2026):** PR-00AA through PR-00C, PR-01A through PR-01C, PR-02A through PR-02F and PR-03A/PR-03B/PR-03C plus PR-04A/PR-04B are implemented.
+PR-05A input VAT/source attribution and PR-05B charges/overhead/ATİK allocation are implemented. PR-06A deduction/KDV1/refund review is implemented. Next is PR-06B — refund lists, packages and payment/offset tracking. See docs/pr-handoffs/PR-06A.md.
+See `docs/pr-handoffs/PR-05B.md` from the repository root. Earlier task briefs below remain the historical scope
 definitions; do not recreate or reinstall the existing scaffold.
 
 You are building a **NEW standalone Export Accounting application** using `SaaP-main.zip` only as a technology and coding-style reference. Use Node.js ES modules + Express 5 + `mysql2/promise` + MySQL 8 + React 19 + Vite 7 + Tailwind 4 + shadcn/Radix + React Router 7 + Axios. Keep backend and frontend as separate npm projects. Use camelCase JSON, snake_case DB, `/api/v1`, SaaP-style JavaScript migrations and `schema_migrations`, service/route/validator separation, permission-scoped routes, OpenAPI, and PR-specific test scripts. Use environment-only secrets. NEVER import production data from the historical `Ortak Malzeme.xlsx` reference. A country pool is a virtual allocation in one physical warehouse. Prevent negative stock and duplicate postings transactionally. Do not implement later modules early.
@@ -170,9 +170,27 @@ currency conversion, atomic balanced invoice journal and source lineage. No real
 settings/receipts/GL are seeded. Preserve applied m001–m014 and all source/close
 history. Run npm --prefix backend run test:pr03c:release and read
 docs/architecture/purchase-receipts.md plus docs/pr-handoffs/PR-03C.md.
-Next PR-04A adds packing-list intake, export card sequence, country allocation
+PR-04A now adds packing-list intake, export card sequence, country allocation
 and shipment links to existing reserved/dispatch stock sources. Partial purchase
 receipts/accruals and coordinated financial reversals remain explicit later work.
+
+## PR-04A task brief and completion
+
+Implemented in m015: manual/CSV original packing intake, SKU/base-unit mapping
+revisions, customer/warehouse/destination validation, independent annual card
+numbering, partial shipment quantity commitments/review, country-first/GENERAL
+reservation and atomic exact source dispatch. Preserve applied m001–m015, all
+source/close history and purchase provenance. Run
+npm --prefix backend run test:pr04a:release and read
+docs/architecture/export-operations.md plus docs/pr-handoffs/PR-04A.md.
+The supplied XLSX remains a read-only reference; direct multi-sheet import needs
+an explicit selection/reconciliation adapter. No real source intake is seeded.
+PR-04B now adds export invoice/e-documents, broker GTİP review, GÇB lifecycle,
+partial customs clearance and transaction types. Dispatch is a separate stock fact.
+
+## PR-04B completion and PR-05A handoff
+
+Implemented in m016: original outgoing XML/profile/VAT retention, exact shipment matching and independent review, broker-verified GTİP/source snapshots, external declaration registration, partial confirmed exits and exact independently accepted final closure. Run npm --prefix backend run test:pr04b:release; see docs/architecture/export-documents-customs.md and docs/pr-handoffs/PR-04B.md. Preserve applied m001–m016 and original sources/ledgers/decisions. No live issuing/transmission, customs submission, export journals or VAT/refund calculation. PR-05A now adds purchase-line input VAT sources and accepted customs source attribution separately in m017.
 
 ## Definition of done for EACH PR
 
@@ -184,3 +202,30 @@ receipts/accruals and coordinated financial reversals remain explicit later work
 - Frontend UX as requested, consistent with SaaP-style components, no giant files.
 - No real workbook imports or fabricated VAT/opening balances.
 - Return a compact handoff with files changed, commands/tests executed, pass/fail, remaining risk, and next PR.
+
+
+## PR-05A completion and PR-05B handoff
+
+Read docs/architecture/vat-source-attribution.md and docs/pr-handoffs/PR-05A.md.
+Run npm --prefix backend run test:pr05a:release. Preserve applied m001–m017,
+original VAT/FX/journal/stock/customs sources and retained attribution/correction
+decisions. PR-05B adds separately evidenced charges, overhead and special ATİK
+allocation with explicit bases, independent review and duplicate-consumption guards.
+Deduction-period reconciliation and final claimability remain PR-06; add claim
+dependency guards before voiding an attribution used by a claim. No historical
+imports, business enrollment or additional local users are part of setup.
+
+## PR-05B completion and PR-06A handoff
+
+Read docs/architecture/vat-cost-allocation.md and docs/pr-handoffs/PR-05B.md.
+Run npm --prefix backend run test:pr05b:release. Preserve applied m001–m018,
+original cost invoice/journal links, frozen goods/turnover bases, cumulative asset
+history, exact allocation amounts and independently reviewed corrections. PR-06A
+adds KDV1 deduction-period reconciliation, evidenced eligibility/limitations,
+duplicate-claim controls and independent refund-request approval. Add claim
+dependencies before permitting any claimed goods/cost source or basis to be voided.
+No real claims, historical imports or extra local accounts are implementation seeds.
+
+## PR-06A completion and PR-06B handoff
+
+Read docs/architecture/vat-refund-reconciliation.md and docs/pr-handoffs/PR-06A.md. Run npm --prefix backend run test:pr06a. Preserve applied m001–m019, original deduction/candidate identities, reported return versions and carry, external-claim evidence, source/period reservations and independent decisions. PR-06B adds Yüklenilen/İndirilecek/export/GÇB lists, immutable claim packages, actual submission tracking, aggregation and cash/offset tracking. Verify current GİB formats and law; internal approval is not filing. Submitted or settled claims must block analytical void/release until evidenced external withdrawal/amendment. No real filing, payment, historical import or new local user is a setup seed.

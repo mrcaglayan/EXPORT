@@ -4,8 +4,6 @@ import AppLayout from '@/layouts/AppLayout'
 import DashboardPage from '@/pages/dashboard/DashboardPage'
 import ProductsPage from '@/pages/products/ProductsPage'
 import InventoryPage from '@/pages/inventory/InventoryPage'
-import ExportsPage from '@/pages/exports/ExportsPage'
-import VatPage from '@/pages/vat/VatPage'
 import AccountingPage from '@/pages/accounting/AccountingPage'
 import SettingsPage from '@/pages/settings/SettingsPage'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -14,6 +12,8 @@ import RequireAuth from '@/auth/RequireAuth'
 import RequirePermission from '@/auth/RequirePermission'
 import LoginPage from '@/auth/LoginPage'
 const PurchasingPage = lazy(() => import('@/pages/purchasing/PurchasingPage'))
+const ExportsPage = lazy(() => import('@/pages/exports/ExportsPage'))
+const VatPage = lazy(() => import('@/pages/vat/VatPage'))
 
 export default function App() {
   return (
@@ -27,8 +27,8 @@ export default function App() {
           <Route path="products" element={<RequirePermission permission="products.read"><ProductsPage /></RequirePermission>} />
           <Route path="inventory" element={<RequirePermission permission="inventory.read"><InventoryPage /></RequirePermission>} />
           <Route path="purchasing" element={<RequirePermission permission="purchasing.read"><Suspense fallback={<p role="status">Loading purchasing…</p>}><PurchasingPage /></Suspense></RequirePermission>} />
-          <Route path="exports" element={<RequirePermission permission="exports.read"><ExportsPage /></RequirePermission>} />
-          <Route path="vat" element={<RequirePermission permission="vat.read"><VatPage /></RequirePermission>} />
+          <Route path="exports" element={<RequirePermission permission="exports.read"><Suspense fallback={<p role="status">Loading exports…</p>}><ExportsPage /></Suspense></RequirePermission>} />
+          <Route path="vat" element={<RequirePermission permission="vat.read"><Suspense fallback={<p role="status">Loading VAT register…</p>}><VatPage /></Suspense></RequirePermission>} />
           <Route path="accounting" element={<RequirePermission permission="accounting.read"><AccountingPage /></RequirePermission>} />
           <Route path="settings" element={<RequirePermission permission="settings.read"><SettingsPage /></RequirePermission>} />
           <Route path="*" element={<NotFoundPage />} />

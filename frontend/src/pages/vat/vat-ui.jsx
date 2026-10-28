@@ -1,0 +1,1 @@
+export function Evidence({value,label='Inspect retained evidence'}){return <details><summary className="cursor-pointer">{label}</summary><pre className="max-w-lg whitespace-pre-wrap break-all text-xs">{JSON.stringify(value,null,2)}</pre></details>}

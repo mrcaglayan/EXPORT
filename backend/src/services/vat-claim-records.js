@@ -1,0 +1,23 @@
+import {query} from '../db/query.js';
+import {entityId} from '../validators/auth.validators.js';
+import {listing} from '../validators/vat-claim.validators.js';
+import {authorize,scopeArgs,notFound} from './entity-context.js';
+import {own,serialize,pageRows,pattern} from './purchasing-context.js';
+import {sum,subtract,zero} from './vat-refund-math.js';
+import {fields,camel,active} from './vat-refund-records.js';
+export {camel,active};
+export const kinds={package:{table:'vat_claim_packages',parent:'package_id',permission:'package',columns:'period_from,period_to,requested_vat'},tracking:{table:'vat_claim_actions',parent:'action_id',permission:'tracking',columns:'package_id,kind,refund_id,reverses_id,event_date,external_reference,amount'}};
+export const common='id,reference,base_currency,context_hash,reason,evidence,status,requested_by,requested_at,reviewed_by,reviewed_at,review_reason,cancel_reason,void_requested_by,void_requested_at,void_reason,void_evidence,void_reviewed_by,void_reviewed_at,void_review_reason';
+export function metadata(kind){const m=kinds[kind];if(!m)throw notFound();return m;}
+export async function read(tx,c,kind,id){const m=metadata(kind),r=(await tx.query(`SELECT ${fields(common+','+m.columns+',input,plan','h')} FROM ${m.table} h WHERE ${own('h')} AND h.id=?`,[...scopeArgs(c),id])).rows[0];if(!r)throw notFound();return serialize(r);}
+export async function get(c,kind,id){entityId(id);await authorize(c,'vat.read');const item=await read({query},c,kind,id);return {item,...(kind==='package'?{tracking:await trackingState({query},c,id)}:{})};}
+export async function list(c,kind,input){const m=metadata(kind);await authorize(c,'vat.read');const p=listing(input),args=scopeArgs(c);let where=own('h');if(p.q){where+=" AND h.reference LIKE ? ESCAPE '!'";args.push(pattern(p.q));}if(p.status){where+=' AND h.status=?';args.push(p.status);}return pageRows(fields(common+','+m.columns,'h'),m.table+' h',where,args,p,'h.requested_at DESC,h.id');}
+export async function members(tx,c,id){return (await tx.query(`SELECT l.id,l.refund_id AS refundId,l.line_number AS lineNumber,l.requested_vat AS requestedVat,l.snapshot FROM vat_claim_package_requests l FORCE INDEX (vat_claim_request_line) WHERE ${own('l')} AND l.package_id=? ORDER BY l.line_number`,[...scopeArgs(c),id])).rows;}
+export async function trackingState(tx,c,id){
+ const events=(await tx.query(`SELECT a.id,a.kind,a.refund_id AS refundId,a.reverses_id AS reversesId,a.amount,a.event_date AS eventDate,a.status,a.external_reference AS externalReference,a.plan,a.context_hash AS contextHash FROM vat_claim_actions a WHERE ${own('a')} AND a.package_id=? AND a.status IN ('REQUESTED','APPROVED') ORDER BY a.event_date,a.id`,[...scopeArgs(c),id])).rows.map(serialize);
+ const balances=(await members(tx,c,id)).map(m=>{const payments=events.filter(a=>a.refundId===m.refundId&&['CASH','OFFSET'].includes(a.kind)&&!events.some(x=>x.kind==='REVERSAL'&&x.status==='APPROVED'&&x.reversesId===a.id)),settledVat=sum(payments.filter(a=>a.status==='APPROVED').map(a=>a.amount)),pendingVat=sum(payments.filter(a=>a.status==='REQUESTED').map(a=>a.amount));return {refundId:m.refundId,reference:m.snapshot.reference,method:m.snapshot.method,requestedVat:m.requestedVat,settledVat,pendingVat,remainingVat:subtract(m.requestedVat,sum([settledVat,pendingVat,zero]))};});
+ return {events,balances,submission:events.find(a=>a.kind==='SUBMISSION'&&a.status==='APPROVED')??null,withdrawal:events.find(a=>a.kind==='WITHDRAWAL'&&a.status==='APPROVED')??null};
+}
+export async function history(c,kind,id,input){entityId(id);await authorize(c,'vat.read');await read({query},c,kind,id);return pageRows(fields('id,sequence_number,action,reason,context,actor_id,created_at','d'),'vat_claim_decisions d',`${own('d')} AND d.${metadata(kind).parent}=?`,[...scopeArgs(c),id],listing(input),'d.sequence_number DESC');}
+export async function rows(c,id,listKind,input){entityId(id);if(!['INPUT','LOADED','SALES','CUSTOMS'].includes(listKind))throw notFound();await authorize(c,'vat.read');await read({query},c,'package',id);return pageRows('l.id,l.period,l.line_number AS lineNumber,l.source_key AS sourceKey,l.data,l.snapshot','vat_claim_package_rows l FORCE INDEX (vat_claim_row_number)',`${own('l')} AND l.package_id=? AND l.list_kind=?`,[...scopeArgs(c),id,listKind],listing(input),'l.period,l.line_number');}
+export async function requests(c,id,input){entityId(id);await authorize(c,'vat.read');await read({query},c,'package',id);return pageRows('l.id,l.refund_id AS refundId,l.line_number AS lineNumber,l.requested_vat AS requestedVat,l.snapshot','vat_claim_package_requests l FORCE INDEX (vat_claim_request_line)',`${own('l')} AND l.package_id=?`,[...scopeArgs(c),id],listing(input),'l.line_number');}

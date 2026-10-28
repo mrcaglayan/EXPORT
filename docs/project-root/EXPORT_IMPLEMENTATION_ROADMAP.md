@@ -1,15 +1,15 @@
 # Export Accounting Application — SaaP-Aligned Implementation Roadmap
 
-**Version:** 1.16 — 27 October 2026
+**Version:** 1.21 — 28 October 2026
 **Project:** new, standalone Turkish trading-exporter application  
 **Reference inspected:** uploaded `SaaP-main.zip` (read as reference, NOT executed)  
 **Scope:** multi-tenant / legal entity, product catalogue, same-warehouse virtual destination allocations, immutable inventory/accounting ledgers, purchasing/e-invoice, customs, VAT attribution and refund preparation.
 
-**Progress (27 October 2026):** PR-00AA through PR-00C, PR-01A through PR-01C, PR-02A through PR-02F and PR-03A/PR-03B/PR-03C implemented.
-Next: PR-04A — packing-list intake, export cards, country allocation and shipments.
+**Progress (28 October 2026):** PR-00AA through PR-00C, PR-01A through PR-01C, PR-02A through PR-02F and PR-03A/PR-03B/PR-03C plus PR-04A/PR-04B and PR-05A/PR-05B plus PR-06A implemented.
+Next: PR-06B — refund lists, claim packages and payment/offset tracking.
 The user authorized a new PR-01/02 design baseline; it is clearly labeled as new.
 Journals have no fixed line-count ceiling, use a paged editor and batched writes.
-See `docs/pr-handoffs/PR-03C.md` from the repository root for actual
+See `docs/pr-handoffs/PR-06A.md` from the repository root for actual
 commands/results and the current implementation limits.
 
 ## 0. Ground rules and confirmed decisions
@@ -17,7 +17,7 @@ commands/results and the current implementation limits.
 1. The new application uses **the same technology family and code conventions as SaaP**, but is a **separate repository and database**. It is not a copy or extension of the whole SaaP ERP. A future integration adapter can be added when required.
 2. Country-specific goods share the **same physical warehouse** and are earmarked with **virtual country pools**. `GENERAL` + country pools must sum to physical on-hand stock for each warehouse/SKU/source layer.
 3. The Excel workbook `Ortak Malzeme.xlsx` is **background reference only**. Do not load it, reconstruct old purchases/stock balances, seed historical inventory, consolidate its real codes, or allocate historical input VAT. Build **capabilities** for later import and approval, but do not execute any migration until actual data and a cut-off date are supplied.
-4. On 21 October 2026 the user authorized a **new baseline**: `PR01_PR02_database_specification.md` and `PR01_PR02_schema.sql`. Tracked authoritative copies are in `export-accounting/docs/design/`; matching copies sit beside this roadmap. They were written from this roadmap and the existing app, not recovered original inputs. Baseline v12 includes PR-01/PR-02 DDL in m004–m011, purchasing in m012 and invoice staging/matching in m013 and atomic purchase receipts in m014; later contracts extend it through forward-only migrations. Preserve applied migrations.
+4. On 21 October 2026 the user authorized a **new baseline**: `PR01_PR02_database_specification.md` and `PR01_PR02_schema.sql`. Tracked authoritative copies are in `export-accounting/docs/design/`; matching copies sit beside this roadmap. They were written from this roadmap and the existing app, not recovered original inputs. Baseline v17 includes PR-01/PR-02 DDL in m004–m011, purchasing in m012 and invoice staging/matching in m013 and atomic purchase receipts in m014 and export operations in m015 and outgoing/customs evidence in m016 and input VAT/source attribution in m017 and cost/overhead/ATİK allocation in m018 and KDV1/refund review in m019; later contracts extend it through forward-only migrations. Preserve applied migrations.
 5. No negative stock; no silent country borrowing; no artificial `0.0001` amount for genuinely free-of-charge lines; no VAT refund based only on dispatch or invoice issuance.
 6. Source purchase VAT, inventory cost, VAT attributable to customs-cleared exports, VAT deduction, and the ultimately claimable refund are **separate amounts and ledgers**.
 7. Each merge/PR must leave the app bootable, migrations runnable, and tests passing. No large untested omnibus PR.
@@ -365,10 +365,10 @@ docs/architecture/inventory-receipts.md and docs/pr-handoffs/PR-02B.md.
 | PR-03A — implemented | Trading partners, contracts, purchase requests, purchase orders, EBYS references and approvals | PR-00/01 |
 | PR-03B — implemented | İZİBİZİ e-Fatura XML import and UUID deduplication; source-line preservation; bulk SKU mapping; document matching; VAT/zero-price validation | PR-03A/01 |
 | PR-03C — implemented | Invoice → approved purchase → goods receipt → inventory and 191/320 journal integration, including mismatch exceptions | PR-02/03B |
-| PR-04A | Packing-list intake, export card sequence, country allocation and export shipments | PR-02D/03 |
-| PR-04B | Export invoice/e-document, customs broker GTİP review, GÇB declaration/closing, partial clearance and transaction-type differentiation | PR-04A |
-| PR-05A | Input VAT source register by purchase invoice line; real source-layer attribution; candidate exported VAT | PR-03/04 |
-| PR-05B | VAT allocation for directly linked charges, indirect overhead and special ATİK cases with legal rules/approval | PR-05A |
+| PR-04A — implemented | Packing-list intake, export card sequence, country allocation and export shipments | PR-02D/03 |
+| PR-04B — implemented | Externally issued outgoing XML matching, broker GTİP review, registered GÇB evidence, independent partial exits/final closure and explicit transaction types | PR-04A |
+| PR-05A — implemented | Input VAT source register by purchase invoice line; real source-layer attribution; candidate exported VAT | PR-03C/PR-04B |
+| PR-05B — implemented | VAT allocation for directly linked charges, indirect overhead and special ATİK cases with legal rules/approval | PR-05A |
 | PR-06A | KDV1 period reconciliation, refund eligibility/limitations, duplicate-claim controls, request approval | PR-05 |
 | PR-06B | Yüklenilen KDV / İndirilecek KDV / export sales / GÇB lists, claim package, refund payment/offset tracking | PR-06A |
 | PR-07 | Performance, security hardening, document retention, GİB interface verification, pilot and deployment readiness | all |
@@ -407,6 +407,44 @@ posting is tested. No real invoice approval or stock/GL posting is seeded.
 Partial physical receipts/accruals, credit notes and coordinated purchase financial
 reversals remain later work. OpenAPI 0.15.0 has 161 paths. See
 docs/architecture/purchase-receipts.md and docs/pr-handoffs/PR-03C.md.
+
+**PR-04A implemented (27 October 2026):** m015 adds original manual/CSV packing
+intake, explicit SKU/unit/customer/destination mapping revisions, independent
+annual export card numbering, partial shipment commitments, independent shipment
+review, destination-first/GENERAL FIFO reservation and atomic source-linked
+dispatch. Card numbers and source/decision history remain retained; concurrent
+over-shipment, manual source bypass and generic export-issue reversal are guarded.
+Nine tables bring the baseline to 82; OpenAPI 0.16.0 documents 202 paths.
+The supplied multi-sheet XLSX was inspected read-only: summary and product/size
+details need a separate selection/reconciliation adapter for direct Excel import.
+Current manual/CSV intake does not consolidate real sheets or seed their rows.
+Dispatch creates no sales/COGS posting, customs clearance or VAT/refund claim.
+See docs/architecture/export-operations.md and docs/pr-handoffs/PR-04A.md.
+
+**PR-04B implemented (27 October 2026):** m016 adds eight scoped tables (90 total),
+externally issued outgoing XML with its actual profile/VAT, exact invoice-to-shipment
+quantity matching, independent approval/renewal, broker VERIFIED GTİP and actual
+dispatched source snapshots, externally registered declaration evidence, independently
+accepted partial customs exits and exact final closure. Applied m001–m015 remain
+frozen. OpenAPI 0.17.0 documents 228 paths. This register performs no live issuing,
+transmission, customs submission, export GL posting or VAT/refund calculation. See
+docs/architecture/export-documents-customs.md and docs/pr-handoffs/PR-04B.md.
+
+**PR-05A implemented (27 October 2026):** m017 adds four scoped tables (94 total), immutable purchase VAT registration, explicit candidate/hold/excluded treatment, independent attribution and evidenced void review. The implemented contract derives original VAT sources from POSTED
+PR-03C receipts and their retained invoice-line, VAT treatment, currency/rate and
+journal links. Preserve source VAT, deductible VAT and capitalized cost separately.
+Trace accepted PR-04B exit quantities through declaration → invoice allocation →
+actual issue line → stock layer → original purchase invoice line. Allocate source
+VAT with exact decimal/residual rules and prevent duplicate source consumption.
+Expose missing provenance and unsupported evidence as exceptions; do not infer VAT
+from inventory cost or a fallback purchase price. Temporary/return/free transactions
+retain their reviewed basis and require explicit eligibility decisions. Candidate
+attribution does not establish deduction, final refund entitlement or a claim.
+Test partial exits, mixed VAT, zero-cost/zero-VAT sources, split source layers,
+duplicate races, scope, retained history and rollback. No historical import/seed or
+new posting of already recorded purchase VAT is authorized by this stage. HOLD and EXCLUDED reserve source basis; accepted void releases only analytical attribution while retaining original decisions. See docs/architecture/vat-source-attribution.md and docs/pr-handoffs/PR-05A.md.
+
+**PR-05B implemented (28 October 2026):** m018 adds six tables (100 total), independently reviewed non-stock invoice/journal sources, frozen monthly candidate-goods/turnover bases, exact weighted direct/overhead/ATİK allocation and sequenced correction history. Accounting supports explicitly linked non-stock supplier journals. Original invoice/debit deduplication, goods/cost collision guards, priority ceilings and cumulative per-asset use from first use protect analytical candidates. Domestic-only months remain in cumulative asset evidence; unused shares do not automatically carry forward. No fixed line ceiling; 301-line, concurrency, rollback, scope, review/void and browser workflows are tested. OpenAPI 0.19.0 has 280 paths. PR-06A now supplies KDV1 reconciliation, reviewed eligibility and claim dependencies through m019. See docs/architecture/vat-cost-allocation.md and docs/pr-handoffs/PR-05B.md.
 
 ## 5. API conventions
 
@@ -479,4 +517,10 @@ cd frontend && npm run lint && npm run build
 - Accounting-account policy, stock valuation and export VAT rules to receive Turkish SMMM/YMM sign-off before live use.
 - Integration with SaaP's full GL or HR/Payroll is not assumed; write domain adapters so that it remains possible.
 
-**Current sequence:** PR-00AA through PR-00C, PR-01A through PR-01C, PR-02A through PR-02F and PR-03A/PR-03B/PR-03C are complete. The newly authorized design baseline replaces the absent input prerequisite. Next implement PR-04A, preserving applied m001–m014, original invoice XML/lines, mapping/decision revisions, purchasing source lines and approvals/commitments, exact corrections/reversals and retained close versions. Continue extending the existing project and refine future baseline contracts as their PRs are implemented.
+**Current sequence:** PR-00AA through PR-00C, PR-01A through PR-01C, PR-02A through PR-02F and PR-03A/PR-03B/PR-03C plus PR-04A/PR-04B and PR-05A/PR-05B plus PR-06A are complete. The newly authorized design baseline replaces the absent input prerequisite. Next implement PR-06B, preserving applied m001–m019, original invoice XML/lines, mapping/decision revisions, purchasing source lines and approvals/commitments, exact corrections/reversals and retained close versions. Continue extending the existing project and refine future baseline contracts as their PRs are implemented.
+
+## PR-04B delivery clarification
+
+Outgoing XML retention/matching and externally registered declaration/exit evidence are implemented in m016. Original profile/VAT and immutable broker/source snapshots remain explicit; partial exits require independent acceptance and exact totals before final closure. This stage performs no live invoice issuing/transmission, customs submission, export GL posting or VAT/refund calculation. See [the PR-04B contract](../architecture/export-documents-customs.md). PR-05A uses accepted source quantities and original purchase VAT facts, preserves temporary/free/return transaction distinctions, and does not treat local review as statutory eligibility. PR-05B extends attribution to separately evidenced charges/overhead/ATİK; PR-06 handles deduction/refund reconciliation. See [the VAT source contract](../architecture/vat-source-attribution.md).
+
+**PR-06A implemented (28 October 2026):** PR-06A adds reviewed original-source deductions, closed monthly KDV1 reconciliation, carry-chain checks, exact duplicate-safe refund requests, dated eligibility/limit checks and independent correction history. m019 adds six tables (106 total) and six request/review permissions. Original candidates and recognized deductions are both reserved; prior external claims reduce capacity. No tax return, claim, stock or journal is seeded or submitted. OpenAPI 0.20.0 has 314 paths. See docs/architecture/vat-refund-reconciliation.md and docs/pr-handoffs/PR-06A.md. PR-06B must consume approved immutable requests, validate processing/filing readiness, aggregate small requests where supported, and prevent releases of submitted or settled amounts without evidenced external correction. The supplied July 2026 KDV1 PDF was a read-only format reference; all tests remain synthetic.
